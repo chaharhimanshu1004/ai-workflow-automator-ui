@@ -1,11 +1,17 @@
 "use client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { GoogleLogin } from "@react-oauth/google"
+import axios from "axios"
+
 
 export default function SignIn() {
 
-    const handleGoogleSuccess = (creds: any) => {
-        console.log('Response-->', creds)
+    const handleGoogleSuccess = async (creds: any) => {
+        const response = await axios.post(`${process.env.NEXT_PUBLIC_BE_BASE_URL}/auth/google`,
+            { token: creds.credential },
+            { headers: { "Content-Type": "application/json" } }
+        )
+        console.log('---> Response', response);
     }
     const handleGoogleError = () => {
         console.log('error in signing in-')
