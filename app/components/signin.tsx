@@ -14,7 +14,8 @@ export default function SignIn() {
             { headers: { "Content-Type": "application/json" } }
         )
 
-        localStorage.setItem("accessToken", response.data.access_token)
+        localStorage.setItem("accessToken", response.data.access_token);
+        document.cookie = `accessToken=${response.data.access_token}; path=/; max-age=86400; SameSite=Strict`
         router.push('/workflows');
     }
     const handleGoogleError = () => {
