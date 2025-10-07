@@ -2,16 +2,20 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { GoogleLogin } from "@react-oauth/google"
 import axios from "axios"
-
+import { useRouter } from "next/navigation"
 
 export default function SignIn() {
+
+    const router = useRouter();
 
     const handleGoogleSuccess = async (creds: any) => {
         const response = await axios.post(`${process.env.NEXT_PUBLIC_BE_BASE_URL}/auth/google`,
             { token: creds.credential },
             { headers: { "Content-Type": "application/json" } }
         )
-        console.log('---> Response', response);
+
+        localStorage.setItem("accessToken", response.data.access_token)
+        router.push('/dashboard');
     }
     const handleGoogleError = () => {
         console.log('error in signing in-')
