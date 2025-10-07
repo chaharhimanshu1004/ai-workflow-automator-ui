@@ -15,7 +15,7 @@ export default function SignIn() {
         )
 
         localStorage.setItem("accessToken", response.data.access_token)
-        router.push('/dashboard');
+        router.push('/workflows');
     }
     const handleGoogleError = () => {
         console.log('error in signing in-')
