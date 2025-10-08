@@ -26,14 +26,13 @@ export default function CredentialsPage() {
     const [formValues, setFormValues] = useState<Record<string, string>>({})
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormValues({ ...formValues, [e.target.name]: e.target.value, [e.target.title]: e.target.title })
+        setFormValues({ ...formValues, [e.target.name]: e.target.value })
     }
-    // return crud_credentials.save_creds(db, user_id, credential.title, credential.platform, credential.data)
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault()
         const response = await axios.post(`${process.env.NEXT_PUBLIC_BE_BASE_URL}/save-creds`, {
-            title: formValues.title,
+            title: credentialFields[selectedType]?.[0]?.title || "My Credential",
             platform: selectedType,
             data: formValues
         }, {
