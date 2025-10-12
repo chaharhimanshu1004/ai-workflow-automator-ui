@@ -3,20 +3,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { GoogleLogin } from "@react-oauth/google"
 import axios from "axios"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/lib/hooks/useAuth"
 
 export default function SignIn() {
 
     const router = useRouter();
+    const { login } = useAuth();
 
     const handleGoogleSuccess = async (creds: any) => {
-        const response = await axios.post(`${process.env.NEXT_PUBLIC_BE_BASE_URL}/auth/google`,
-            { token: creds.credential },
-            { headers: { "Content-Type": "application/json" } }
-        )
+        try {
+            const response = await axios.post(`${process.env.NEXT_PUBLIC_BE_BASE_URL}/auth/google`,
+                { token: creds.credential },
+                { headers: { "Content-Type": "application/json" } }
+            )
 
-        localStorage.setItem("accessToken", response.data.access_token);
-        document.cookie = `accessToken=${response.data.access_token}; path=/; max-age=86400; SameSite=Strict`
-        router.push('/workflows');
+            await login(response.data.access_token);
+            router.push('/workflows');
+        } catch (error) {
+            console.error('Login failed:', error);
+        }
     }
     const handleGoogleError = () => {
         console.log('error in signing in-')

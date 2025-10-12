@@ -3,6 +3,7 @@ import { useState } from "react"
 import Sidebar from "@/app/components/Sidebar"
 import { Button } from "@/components/ui/button"
 import axios from "axios"
+import { useAuthHeaders } from "@/lib/hooks/useAuth"
 
 const credentialOptions = [
     { label: "Telegram API", value: "telegram" },
@@ -21,7 +22,7 @@ const credentialFields: Record<string, { label: string; name: string; type: stri
 }
 
 export default function CredentialsPage() {
-    const token = localStorage.getItem("accessToken");
+    const authHeaders = useAuthHeaders();
     const [selectedType, setSelectedType] = useState("")
     const [formValues, setFormValues] = useState<Record<string, string>>({})
 
@@ -38,7 +39,7 @@ export default function CredentialsPage() {
         }, {
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`
+                ...authHeaders
             }
         })
         console.log('----->>Response from BE', response.data);

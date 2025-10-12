@@ -3,6 +3,8 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import clsx from "clsx"
+import { useAuth } from "@/lib/hooks/useAuth"
+import { useEffect } from "react"
 
 const navItems = [
     { name: "Overview", href: "/workflows" },
@@ -12,6 +14,13 @@ const navItems = [
 export default function Sidebar() {
     const pathname = usePathname()
     const router = useRouter()
+    const { user, logout, fetchUserInfo, isAuthenticated } = useAuth()
+
+    useEffect(() => {
+        if (isAuthenticated && !user) {
+            fetchUserInfo()
+        }
+    }, [isAuthenticated, user, fetchUserInfo])
 
     return (
         <aside className="w-64 bg-card/95 border-r border-black/30 shadow-lg flex flex-col justify-between py-8 px-6 min-h-screen">
@@ -46,11 +55,18 @@ export default function Sidebar() {
             </div>
             <div className="flex items-center gap-3 mt-8 p-3 rounded-lg bg-muted/40">
                 <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
-                    <span>A</span>
+                    <span>{user?.name?.[0] || user?.email?.[0] || 'U'}</span>
                 </div>
-                <div>
-                    <div className="font-semibold text-foreground">Your Name</div>
-                    <div className="text-xs text-muted-foreground">View Profile</div>
+                <div className="flex-1">
+                    <div className="font-semibold text-foreground">
+                        {user?.name || user?.email || 'Loading...'}
+                    </div>
+                    <button
+                        onClick={logout}
+                        className="text-xs text-muted-foreground hover:text-red-500 transition"
+                    >
+                        Logout
+                    </button>
                 </div>
             </div>
         </aside>
