@@ -466,8 +466,6 @@ export default function CreateWorkflow() {
         }
         try {
             const workflowData = prepareWorkflowData();
-            console.log('-->>workflowData', workflowData);
-
             if (workflowId) {
                 await axios.put(
                     `${process.env.NEXT_PUBLIC_BE_BASE_URL}/workflow/${workflowId}`,
