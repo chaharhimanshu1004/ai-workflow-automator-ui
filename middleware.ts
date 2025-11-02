@@ -11,6 +11,11 @@ export function middleware(request: NextRequest) {
         }
     }
 
+    // Explicitly exclude the OAuth callback route
+    if (request.nextUrl.pathname.startsWith('/auth/callback')) {
+        return NextResponse.next()
+    }
+
     if (request.nextUrl.pathname.startsWith('/credentials') ||
         request.nextUrl.pathname.startsWith('/workflows')) {
 
@@ -20,9 +25,11 @@ export function middleware(request: NextRequest) {
             return NextResponse.redirect(new URL('/', request.url))
         }
     }
+
     return NextResponse.next()
 }
 
 export const config = {
-    matcher: ['/credentials/:path*', '/workflows/:path*', '/']
+    matcher: ['/credentials/:path*', '/workflows/:path*', '/auth/:path*', '/']
+    // Now /auth/callback is included in matcher but explicitly handled above
 }
