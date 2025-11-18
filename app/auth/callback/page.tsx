@@ -10,6 +10,11 @@ export default function OAuthCallback() {
     const { token } = useAuth();
     const [isProcessing, setIsProcessing] = useState(true);
     const [debugInfo, setDebugInfo] = useState<string>('');
+    const [currentUrl, setCurrentUrl] = useState<string>('');
+
+    useEffect(() => {
+        setCurrentUrl(window.location.href);
+    }, []);
 
     useEffect(() => {
         console.log('OAuth callback page loaded');
@@ -42,9 +47,15 @@ export default function OAuthCallback() {
 
                 try {
                     console.log('Making callback request to backend...');
+                    console.log('Backend URL:', process.env.NEXT_PUBLIC_BE_BASE_URL);
                     setDebugInfo('Sending authorization code to backend...');
 
-                    const authHeaders = { Authorization: `Bearer ${token}` };
+                    const authHeaders = {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    };
+
+                    console.log('Auth headers:', authHeaders);
 
                     const response = await axios.post(
                         `${process.env.NEXT_PUBLIC_BE_BASE_URL}/oauth/gmail/callback`,
@@ -55,9 +66,18 @@ export default function OAuthCallback() {
                     console.log('Callback successful:', response.data);
                     toast.success('Gmail credentials saved successfully!');
                     router.push('/credentials');
-                } catch (error) {
+                } catch (error: any) {
                     console.error('OAuth callback error:', error);
-                    toast.error('Failed to save Gmail credentials');
+                    console.error('Error response:', error.response?.data);
+                    console.error('Error status:', error.response?.status);
+
+                    if (error.response?.status === 401) {
+                        toast.error('Authentication failed. Please try again.');
+                    } else if (error.response?.status === 400) {
+                        toast.error('Invalid authorization code.');
+                    } else {
+                        toast.error('Failed to save Gmail credentials');
+                    }
                     router.push('/credentials');
                 }
             } else {
@@ -84,9 +104,11 @@ export default function OAuthCallback() {
                 <p className="mt-2 text-xs text-gray-500">
                     {debugInfo}
                 </p>
-                <p className="mt-2 text-xs text-gray-400">
-                    URL: {typeof window !== 'undefined' ? window.location.pathname : 'Loading...'}
-                </p>
+                {currentUrl && (
+                    <p className="mt-2 text-xs text-gray-400">
+                        URL: {currentUrl}
+                    </p>
+                )}
             </div>
         </div>
     );
