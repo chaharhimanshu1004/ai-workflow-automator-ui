@@ -207,6 +207,32 @@ const actionTypes: TriggerType[] = [
                 key: 'data'
             }
         ]
+    },
+    {
+        id: 'ai-action',
+        label: 'AI',
+        color: '#6366F1',
+        icon: '🤖',
+        description: 'Use AI to generate or search content',
+        configFields: [
+            {
+                type: 'text',
+                label: 'Prompt',
+                placeholder: 'Enter your prompt or query',
+                required: true,
+                key: 'prompt'
+            },
+            {
+                type: 'select',
+                label: 'Model',
+                required: true,
+                options: [
+                    { label: 'Gemini-2', value: 'gemini2' },
+                    { label: 'Gemini-2.5', value: 'gemini2.5' }
+                ],
+                key: 'model'
+            }
+        ]
     }
 ];
 

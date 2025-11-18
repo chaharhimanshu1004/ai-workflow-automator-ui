@@ -8,7 +8,8 @@ import toast from 'react-hot-toast'
 
 const credentialOptions = [
     { label: "Telegram API", value: "telegram" },
-    { label: "Email send", value: "gmail" }
+    { label: "Email send", value: "gmail" },
+    { label: "Gemini", value: "gemini" }
 ]
 
 const credentialFields: Record<string, { label: string; name: string; type: string; placeholder: string, title: string }[]> = {
@@ -21,7 +22,16 @@ const credentialFields: Record<string, { label: string; name: string; type: stri
             title: "Telegram Bot Token"
         },
     ],
-    gmail: []
+    gmail: [],
+    gemini: [
+        {
+            label: "AI",
+            name: "apiKey",
+            type: "text",
+            placeholder: "sk-...",
+            title: "Gemini API Key"
+        }
+    ]
 }
 
 interface StoredCredential {
