@@ -50,6 +50,8 @@ export default function CredentialsPage() {
     const [formValues, setFormValues] = useState<Record<string, string>>({})
     const [isOAuthLoading, setIsOAuthLoading] = useState(false)
     const [credentials, setCredentials] = useState<StoredCredential[]>([]);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
     // Fetch stored credentials
     useEffect(() => {
@@ -121,6 +123,37 @@ export default function CredentialsPage() {
             setIsOAuthLoading(false);
         }
     }
+
+    const handleDeleteCredential = async (id: string, title: string) => {
+        try {
+            setDeletingId(id);
+            
+            await axios.delete(
+                `${process.env.NEXT_PUBLIC_BE_BASE_URL}/credentials/${id}`,
+                { headers: authHeaders }
+            );
+
+            // Remove credential from local state
+            setCredentials(prev => prev.filter(cred => cred.id !== id));
+            toast.success(`Credential "${title}" deleted successfully`);
+            setShowDeleteConfirm(null);
+        } catch (error) {
+            console.error('Error deleting credential:', error);
+            toast.error('Failed to delete credential');
+        } finally {
+            setDeletingId(null);
+        }
+    };
+
+    const confirmDelete = (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        setShowDeleteConfirm(id);
+    };
+
+    const cancelDelete = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setShowDeleteConfirm(null);
+    };
 
     const fields = credentialFields[selectedType] || []
 
@@ -223,16 +256,117 @@ export default function CredentialsPage() {
                                         key={cred.id}
                                         className="flex items-center justify-between bg-black/20 rounded-lg px-5 py-4 shadow-sm"
                                     >
-                                        <span className="font-semibold text-foreground">{cred.title}</span>
-                                        <span className="text-xs px-3 py-1 rounded bg-primary/10 text-primary font-medium uppercase tracking-wide">
-                                            {cred.platform}
-                                        </span>
+                                        <div className="flex items-center space-x-4">
+                                            <span className="font-semibold text-foreground">{cred.title}</span>
+                                            <span className="text-xs px-3 py-1 rounded bg-primary/10 text-primary font-medium uppercase tracking-wide">
+                                                {cred.platform}
+                                            </span>
+                                        </div>
+                                        
+                                        <div className="flex items-center space-x-2">
+                                            {showDeleteConfirm === cred.id ? (
+                                                <div className="flex items-center space-x-2">
+                                                    <span className="text-xs text-muted-foreground">Delete?</span>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDeleteCredential(cred.id, cred.title);
+                                                        }}
+                                                        disabled={deletingId === cred.id}
+                                                        className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 transition"
+                                                    >
+                                                        {deletingId === cred.id ? (
+                                                            <div className="flex items-center">
+                                                                <div className="animate-spin rounded-full h-3 w-3 border-b border-white mr-1"></div>
+                                                                Yes
+                                                            </div>
+                                                        ) : (
+                                                            'Yes'
+                                                        )}
+                                                    </button>
+                                                    <button
+                                                        onClick={cancelDelete}
+                                                        className="px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 transition"
+                                                    >
+                                                        No
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    onClick={(e) => confirmDelete(e, cred.id)}
+                                                    className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50/10 rounded transition-colors"
+                                                    title="Delete credential"
+                                                >
+                                                    <svg
+                                                        className="w-4 h-4"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                        />
+                                                    </svg>
+                                                </button>
+                                            )}
+                                        </div>
                                     </li>
                                 ))}
                             </ul>
                         )}
                     </div>
                 </div>
+
+                {/* Delete Confirmation Modal */}
+                {showDeleteConfirm && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-lg p-6 shadow-xl max-w-md w-full mx-4">
+                            <div className="flex items-center mb-4">
+                                <svg className="w-6 h-6 text-red-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                </svg>
+                                <h3 className="text-lg font-bold text-gray-900">Delete Credential</h3>
+                            </div>
+                            
+                            <p className="text-sm text-gray-600 mb-6">
+                                Are you sure you want to delete "{credentials.find(c => c.id === showDeleteConfirm)?.title}"? 
+                                This action cannot be undone and will remove access to this service.
+                            </p>
+
+                            <div className="flex space-x-3">
+                                <button
+                                    onClick={cancelDelete}
+                                    className="flex-1 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition"
+                                    disabled={deletingId === showDeleteConfirm}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        const credential = credentials.find(c => c.id === showDeleteConfirm);
+                                        if (credential) {
+                                            handleDeleteCredential(credential.id, credential.title);
+                                        }
+                                    }}
+                                    disabled={deletingId === showDeleteConfirm}
+                                    className="flex-1 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 transition"
+                                >
+                                    {deletingId === showDeleteConfirm ? (
+                                        <div className="flex items-center justify-center">
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                            Deleting...
+                                        </div>
+                                    ) : (
+                                        'Delete'
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </main>
         </div>
     )
