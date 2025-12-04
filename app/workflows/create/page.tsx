@@ -54,7 +54,7 @@ const actionCredentialMapping: Record<string, {
     },
     'email-send': {
         platform: 'gmail',
-        useOAuth: true // This indicates OAuth flow instead of form fields
+        useOAuth: true
     },
     'gemini': {
         platform: 'gemini',
@@ -63,7 +63,6 @@ const actionCredentialMapping: Record<string, {
         ]
     }
 };
-
 
 interface NodeData {
     label: string;
@@ -76,26 +75,6 @@ interface NodeData {
 interface CustomNodeProps {
     data: any;
     id: string;
-}
-
-interface WorkflowData {
-    title: string;
-    enabled: boolean;
-    nodes: Record<string, {
-        position: { x: number; y: number };
-        data: {
-            label: string;
-            type: string;
-            icon: string;
-            color: string;
-            config?: Record<string, any>;
-        };
-        type: string;
-    }>;
-    connections: Record<string, {
-        source: string;
-        target: string;
-    }>;
 }
 
 const triggerTypes: TriggerType[] = [
@@ -112,15 +91,6 @@ const triggerTypes: TriggerType[] = [
         color: '#3B82F6',
         icon: '📝',
         description: 'Triggered when a form is submitted',
-        configFields: [
-            {
-                type: 'text',
-                label: 'Form ID',
-                placeholder: 'Enter the form identifier',
-                required: true,
-                key: 'formId'
-            }
-        ]
     },
 ];
 
@@ -240,10 +210,6 @@ const actionTypes: TriggerType[] = [
     }
 ];
 
-const getNodeTypeInfo = (typeId: string): TriggerType | undefined => {
-    return [...triggerTypes, ...actionTypes].find(type => type.id === typeId);
-};
-
 const CustomNode = ({ data, id }: CustomNodeProps) => {
     const nodeData = data as any;
     const hasConfig = nodeData.config && Object.keys(nodeData.config).length > 0;
@@ -278,7 +244,7 @@ const CustomNode = ({ data, id }: CustomNodeProps) => {
                     e.stopPropagation();
                     nodeData.onDeleteNode && nodeData.onDeleteNode(id);
                 }}
-                className="absolute -top-2 -right-2 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] hover:bg-red-600 transition shadow-sm opacity-0 group-hover:opacity-100"
+                className="absolute -top-2 -right-2 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] hover:bg-red-600 transition shadow-sm"
                 title="Delete node"
             >
                 ×
@@ -335,11 +301,17 @@ export default function CreateWorkflow() {
     const [currentActionType, setCurrentActionType] = useState<TriggerType | null>(null);
     const [showConfigForm, setShowConfigForm] = useState<boolean>(false);
 
-    // New state for credentials
+    // Credential states
     const [storedCredentials, setStoredCredentials] = useState<StoredCredential[]>([]);
     const [showCredentialForm, setShowCredentialForm] = useState(false);
     const [credentialFormData, setCredentialFormData] = useState<Record<string, string>>({});
     const [pendingActionType, setPendingActionType] = useState<TriggerType | null>(null);
+    const [isOAuthLoading, setIsOAuthLoading] = useState(false);
+
+    // Form trigger states
+    const [generatedFormUrl, setGeneratedFormUrl] = useState<string | null>(null);
+    const [showFormUrlModal, setShowFormUrlModal] = useState(false);
+    const [showTriggerConfigForm, setShowTriggerConfigForm] = useState(false);
 
     const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
@@ -368,10 +340,10 @@ export default function CreateWorkflow() {
 
     const handleSelectActionType = (actionType: TriggerType) => {
         const credentialInfo = actionCredentialMapping[actionType.id];
-        
+
         if (credentialInfo) {
             const hasCredential = checkCredentialExists(credentialInfo.platform);
-            
+
             if (!hasCredential) {
                 setPendingActionType(actionType);
                 setCredentialFormData({});
@@ -402,7 +374,6 @@ export default function CreateWorkflow() {
         if (!currentActionType) return;
 
         addActionNode(currentActionType, configValues);
-
         setShowConfigForm(false);
         setShowActionSelector(false);
         setCurrentActionType(null);
@@ -429,8 +400,6 @@ export default function CreateWorkflow() {
             setIsOAuthLoading(false);
         }
     };
-
-    const [isOAuthLoading, setIsOAuthLoading] = useState(false);
 
     const handleCredentialSubmit = async () => {
         if (!pendingActionType) return;
@@ -459,10 +428,10 @@ export default function CreateWorkflow() {
                 }
             );
             toast.success(`${credentialInfo.platform} credentials saved successfully!`);
-            
+
             await fetchStoredCredentials();
             setShowCredentialForm(false);
-            
+
             setCurrentActionType(pendingActionType);
             setConfigValues({});
 
@@ -533,7 +502,7 @@ export default function CreateWorkflow() {
                     data: {
                         ...nodeData.data,
                         onAddNode: handleAddNode,
-                        onDeleteNode: handleDeleteNode // Add delete handler to loaded nodes
+                        onDeleteNode: handleDeleteNode
                     }
                 };
             });
@@ -568,28 +537,20 @@ export default function CreateWorkflow() {
     };
 
     const prepareWorkflowData = () => {
-        const serializableNodes = nodes
-            .filter(node => node.type !== 'addTrigger')
-            .map(node => {
-                const { data, ...nodeProps } = node;
-                const { onAddNode, ...nodeData } = data;
+        const currentNodes = nodes.filter(node => node.type !== 'addTrigger');
+        const currentEdges = edges;
 
-                return {
-                    ...nodeProps,
-                    data: nodeData
-                };
-            });
-
-        const nodesObject = serializableNodes.reduce<Record<string, any>>((acc, node) => {
+        const nodesObject = currentNodes.reduce<Record<string, any>>((acc, node) => {
             if (node.id && node.position && node.data && node.type) {
+                const { onAddNode, onDeleteNode, ...nodeData } = node.data;
                 acc[node.id] = {
                     position: node.position,
                     data: {
-                        label: node.data.label as string,
-                        type: node.data.type as string,
-                        icon: node.data.icon as string,
-                        color: node.data.color as string,
-                        config: node.data.config as Record<string, any> || {}
+                        label: nodeData.label as string,
+                        type: nodeData.type as string,
+                        icon: nodeData.icon as string,
+                        color: nodeData.color as string,
+                        config: nodeData.config as Record<string, any> || {}
                     },
                     type: node.type
                 };
@@ -597,7 +558,7 @@ export default function CreateWorkflow() {
             return acc;
         }, {});
 
-        const connectionsObject = edges.reduce<Record<string, any>>((acc, edge) => {
+        const connectionsObject = currentEdges.reduce<Record<string, any>>((acc, edge) => {
             if (edge.id && edge.source && edge.target) {
                 acc[edge.id] = {
                     source: edge.source,
@@ -616,12 +577,9 @@ export default function CreateWorkflow() {
     };
 
     const saveWorkflow = async () => {
-        if (!token) {
-            return;
-        }
-        if (nodes.length === 1 && nodes[0].type === 'custom') {
-            return;
-        }
+        if (!token) return;
+        if (nodes.length === 1 && nodes[0].type === 'addTrigger') return;
+
         try {
             const workflowData = prepareWorkflowData();
             if (workflowId) {
@@ -637,7 +595,6 @@ export default function CreateWorkflow() {
                     { headers: authHeaders }
                 );
                 setWorkflowId(response.data.id);
-
                 router.push(`/workflows/create?id=${response.data.id}`, { scroll: false });
             }
         } catch (error) {
@@ -650,7 +607,7 @@ export default function CreateWorkflow() {
 
         const timer = setTimeout(() => {
             saveWorkflow();
-        }, 1000);
+        }, 3000);
 
         return () => clearTimeout(timer);
     }, [nodes, edges]);
@@ -702,6 +659,12 @@ export default function CreateWorkflow() {
     };
 
     const addTriggerNode = (triggerType: TriggerType) => {
+        if (triggerType.id === 'form-submission') {
+            // Directly create the form trigger without configuration
+            createFormTrigger();
+            return;
+        }
+
         const newNode: Node = {
             id: `node-${nodeId}`,
             type: 'custom',
@@ -712,13 +675,60 @@ export default function CreateWorkflow() {
                 icon: triggerType.icon,
                 color: triggerType.color,
                 onAddNode: handleAddNode,
-                onDeleteNode: handleDeleteNode, // Add delete handler
+                onDeleteNode: handleDeleteNode,
             },
         };
 
         setNodes([newNode]);
         setNodeId((id) => id + 1);
         setShowTriggerSelector(false);
+    };
+
+    const createFormTrigger = async () => {
+        try {
+            const response = await axios.post(
+                `${process.env.NEXT_PUBLIC_BE_BASE_URL}/create-form-trigger`,
+                {
+                    workflowId: workflowId,
+                    triggerType: 'form-submission'
+                },
+                { headers: authHeaders }
+            );
+
+            const { formId, webhookUrl } = response.data;
+            const formUrl = `${window.location.origin}/forms/${formId}`;
+            setGeneratedFormUrl(formUrl);
+            setShowFormUrlModal(true);
+
+            const newNode: Node = {
+                id: `node-${nodeId}`,
+                type: 'custom',
+                position: { x: 400, y: 300 },
+                data: {
+                    label: 'Form Submission',
+                    type: 'form-submission',
+                    icon: '📝',
+                    color: '#3B82F6',
+                    onAddNode: handleAddNode,
+                    onDeleteNode: handleDeleteNode,
+                    config: {
+                        formId: formId,
+                        webhookUrl: webhookUrl,
+                        formUrl: formUrl
+                    },
+                },
+            };
+
+            setNodes([newNode]);
+            setNodeId((id) => id + 1);
+            setShowTriggerSelector(false);
+            toast.success('Form trigger created successfully!');
+            
+        } catch (error) {
+            console.error('Error creating form trigger:', error);
+            toast.error('Failed to create form trigger');
+            setShowTriggerSelector(false);
+        }
     };
 
     const addActionNode = (actionType: TriggerType, config: Record<string, any> = {}) => {
@@ -737,7 +747,7 @@ export default function CreateWorkflow() {
                 icon: actionType.icon,
                 color: actionType.color,
                 onAddNode: handleAddNode,
-                onDeleteNode: handleDeleteNode, // Add delete handler
+                onDeleteNode: handleDeleteNode,
                 config: config,
             },
         };
@@ -760,35 +770,99 @@ export default function CreateWorkflow() {
         }
     }, [handleAddTrigger]);
 
-    const handleDeleteNode = useCallback((nodeId: string) => {
-        // Don't allow deleting the add-trigger node
+    const handleDeleteNode = useCallback(async (nodeId: string) => {
         if (nodeId === 'add-trigger') return;
 
-        setNodes((nds) => {
-            const nodeToDelete = nds.find(n => n.id === nodeId);
-            if (!nodeToDelete) return nds;
+        try {
+            const nodeToDelete = nodes.find(n => n.id === nodeId);
+            if (!nodeToDelete) return;
 
-            // If this is the only actual workflow node (not add-trigger), replace with add-trigger
-            const workflowNodes = nds.filter(n => n.type !== 'addTrigger');
+            let updatedNodes: Node[];
+            let updatedEdges: Edge[];
+
+            const workflowNodes = nodes.filter(n => n.type !== 'addTrigger');
             if (workflowNodes.length === 1 && workflowNodes[0].id === nodeId) {
-                return [{
+                updatedNodes = [{
                     id: 'add-trigger',
                     type: 'addTrigger',
                     position: { x: 400, y: 300 },
                     data: { label: 'Add Trigger' },
                 }];
+            } else {
+                updatedNodes = nodes.filter(n => n.id !== nodeId);
             }
 
-            // Remove the node
-            return nds.filter(n => n.id !== nodeId);
-        });
+            updatedEdges = edges.filter(edge =>
+                edge.source !== nodeId && edge.target !== nodeId
+            );
 
-        setEdges((eds) => eds.filter(edge => 
-            edge.source !== nodeId && edge.target !== nodeId
-        ));
+            setNodes(updatedNodes);
+            setEdges(updatedEdges);
 
-        toast.success('Node deleted successfully');
-    }, []);
+            if (token && workflowId) {
+                try {
+                    const currentNodes = updatedNodes.filter(node => node.type !== 'addTrigger');
+                    const currentEdges = updatedEdges;
+
+                    const nodesObject = currentNodes.reduce<Record<string, any>>((acc, node) => {
+                        if (node.id && node.position && node.data && node.type) {
+                            const { onAddNode, onDeleteNode, ...nodeData } = node.data;
+                            acc[node.id] = {
+                                position: node.position,
+                                data: {
+                                    label: nodeData.label as string,
+                                    type: nodeData.type as string,
+                                    icon: nodeData.icon as string,
+                                    color: nodeData.color as string,
+                                    config: nodeData.config as Record<string, any> || {}
+                                },
+                                type: node.type
+                            };
+                        }
+                        return acc;
+                    }, {});
+
+                    const connectionsObject = currentEdges.reduce<Record<string, any>>((acc, edge) => {
+                        if (edge.id && edge.source && edge.target) {
+                            acc[edge.id] = {
+                                source: edge.source,
+                                target: edge.target
+                            };
+                        }
+                        return acc;
+                    }, {});
+
+                    const workflowData = {
+                        title: "New Workflow",
+                        enabled: true,
+                        nodes: nodesObject,
+                        connections: connectionsObject
+                    };
+
+                    await axios.put(
+                        `${process.env.NEXT_PUBLIC_BE_BASE_URL}/workflow/${workflowId}`,
+                        workflowData,
+                        {
+                            headers: {
+                                'Content-Type': 'application/json',
+                                ...authHeaders
+                            }
+                        }
+                    );
+                    toast.success('Node deleted successfully');
+                } catch (error) {
+                    console.error('Error saving workflow after deletion:', error);
+                    toast.error('Node deleted but failed to save to server.');
+                }
+            } else {
+                toast.success('Node deleted successfully');
+            }
+
+        } catch (error) {
+            console.error('Error deleting node:', error);
+            toast.error('Failed to delete node');
+        }
+    }, [nodes, edges, token, workflowId, authHeaders]);
 
     if (isLoading) {
         return (
@@ -803,6 +877,7 @@ export default function CreateWorkflow() {
 
     return (
         <div className="relative w-full h-screen">
+            {/* Trigger Selector Modal */}
             {showTriggerSelector && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20">
                     <div className="bg-white rounded-lg p-6 shadow-xl max-w-md w-full mx-4">
@@ -818,6 +893,7 @@ export default function CreateWorkflow() {
                                     <span className="mr-3 text-xl">{triggerType.icon}</span>
                                     <div>
                                         <div className="font-medium text-sm">{triggerType.label}</div>
+                                        <div className="text-xs text-gray-500">{triggerType.description}</div>
                                     </div>
                                 </button>
                             ))}
@@ -832,6 +908,7 @@ export default function CreateWorkflow() {
                 </div>
             )}
 
+            {/* Credential Form Modal */}
             {showCredentialForm && pendingActionType && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-30">
                     <div className="bg-white rounded-lg p-6 shadow-xl max-w-md w-full mx-4">
@@ -855,11 +932,9 @@ export default function CreateWorkflow() {
                                             </svg>
                                         </div>
                                         <div className="ml-3">
-                                            <h3 className="text-sm font-medium text-blue-800">
-                                                Gmail OAuth Authorization
-                                            </h3>
+                                            <h3 className="text-sm font-medium text-blue-800">Gmail OAuth Authorization</h3>
                                             <div className="mt-2 text-sm text-blue-700">
-                                                <p>You'll be redirected to Google to authorize access to your Gmail account. This is secure and we only request the minimum permissions needed to send emails.</p>
+                                                <p>You'll be redirected to Google to authorize access to your Gmail account.</p>
                                             </div>
                                         </div>
                                     </div>
@@ -940,25 +1015,11 @@ export default function CreateWorkflow() {
                                 </div>
                             </form>
                         )}
-
-                        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                            <div className="flex">
-                                <div className="flex-shrink-0">
-                                    <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                                </svg>
-                                </div>
-                                <div className="ml-3">
-                                    <p className="text-sm text-blue-800">
-                                        Your credentials are encrypted and stored securely. You can manage them later in the Credentials section.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             )}
 
+            {/* Action Selector Modal */}
             {showActionSelector && !showCredentialForm && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20">
                     <div className="bg-white rounded-lg p-6 shadow-xl max-w-md w-full mx-4">
@@ -969,7 +1030,7 @@ export default function CreateWorkflow() {
                                     {actionTypes.map((actionType) => {
                                         const credentialInfo = actionCredentialMapping[actionType.id];
                                         const hasCredential = credentialInfo ? checkCredentialExists(credentialInfo.platform) : true;
-                                        
+
                                         return (
                                             <button
                                                 key={actionType.id}
@@ -1080,6 +1141,85 @@ export default function CreateWorkflow() {
                                 </form>
                             </>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* Simplified Form URL Modal */}
+            {showFormUrlModal && generatedFormUrl && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 shadow-xl max-w-lg w-full mx-4">
+                        <div className="flex items-center mb-4">
+                            <span className="mr-3 text-2xl">📝</span>
+                            <h3 className="text-lg font-bold">Form Trigger Created!</h3>
+                        </div>
+                        
+                        <div className="mb-6">
+                            <p className="text-sm text-gray-600 mb-4">
+                                Your form trigger is ready! Anyone who submits this form will trigger your workflow:
+                            </p>
+                            
+                            <div className="bg-gray-50 border rounded-md p-3 mb-4">
+                                <div className="flex items-center justify-between">
+                                    <code className="text-sm text-blue-600 break-all mr-2">
+                                        {generatedFormUrl}
+                                    </code>
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(generatedFormUrl);
+                                            toast.success('Form URL copied to clipboard!');
+                                        }}
+                                        className="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition flex-shrink-0"
+                                    >
+                                        Copy Link
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex space-x-2">
+                                <a
+                                    href={generatedFormUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex-1 py-2 bg-green-600 text-white text-center rounded-md hover:bg-green-700 transition text-sm"
+                                >
+                                    🔗 Test Form
+                                </a>
+                            </div>
+                        </div>
+
+                        <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+                            <div className="flex">
+                                <div className="flex-shrink-0">
+                                    <svg className="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div className="ml-3">
+                                    <h3 className="text-sm font-medium text-blue-800">How it Works</h3>
+                                    <div className="mt-2 text-sm text-blue-700">
+                                        <ul className="list-disc list-inside space-y-1">
+                                            <li>Share this link with anyone</li>
+                                            <li>When someone submits the form → Your workflow runs</li>
+                                            <li>Form data is available in your workflow actions</li>
+                                            <li>No configuration needed - just share and go!</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end">
+                            <button
+                                onClick={() => {
+                                    setShowFormUrlModal(false);
+                                    setGeneratedFormUrl(null);
+                                }}
+                                className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition"
+                            >
+                                Done
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
