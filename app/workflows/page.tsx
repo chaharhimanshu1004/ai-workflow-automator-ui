@@ -1,50 +1,30 @@
 "use client"
 
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
-
-interface Workflow {
-    id: string;
-    title: string;
-    enabled: boolean;
-    created_at: string;
-    updated_at: string;
-}
+import { WorkflowI } from '@/types/workflows.interface';
+import { fetchWorkflows, deleteWorkflow } from '@/lib/api/workflow';
 
 export default function WorkflowsPage() {
-    const [workflows, setWorkflows] = useState<Workflow[]>([]);
+    const [workflows, setWorkflows] = useState<WorkflowI[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
     const router = useRouter();
     const { token } = useAuth();
 
-    const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
-
     useEffect(() => {
-        const fetchWorkflows = async () => {
+        const loadWorkflows = async () => {
             if (!token) {
                 setIsLoading(false);
                 return;
             }
-
             try {
-                const response = await axios.get(
-                    `${process.env.NEXT_PUBLIC_BE_BASE_URL}/workflow`,
-                    {
-                        headers: authHeaders,
-                        params: {
-                            skip: 0,
-                            limit: 100
-                        }
-                    }
-                );
-
-                setWorkflows(response.data);
+                const data = await fetchWorkflows(token);
+                setWorkflows(data);
             } catch (error) {
                 console.error('Error fetching workflows:', error);
                 toast.error('Failed to load workflows');
@@ -52,8 +32,7 @@ export default function WorkflowsPage() {
                 setIsLoading(false);
             }
         };
-
-        fetchWorkflows();
+        loadWorkflows();
     }, [token]);
 
     const handleWorkflowClick = (id: string) => {
@@ -67,12 +46,7 @@ export default function WorkflowsPage() {
     const handleDeleteWorkflow = async (id: string, title: string) => {
         try {
             setDeletingId(id);
-            
-            await axios.delete(
-                `${process.env.NEXT_PUBLIC_BE_BASE_URL}/workflow/${id}`,
-                { headers: authHeaders }
-            );
-            
+            await deleteWorkflow(id, token!);
             setWorkflows(prev => prev.filter(workflow => workflow.id !== id));
             toast.success(`Workflow "${title}" deleted successfully`);
             setShowDeleteConfirm(null);
@@ -150,8 +124,8 @@ export default function WorkflowsPage() {
                                         <td className="px-6 py-4">
                                             <div className="flex justify-center">
                                                 <span className={`px-3 py-1 text-xs rounded-full ${workflow.enabled
-                                                        ? 'bg-green-600/20 text-green-500 border border-green-500/30'
-                                                        : 'bg-gray-600/20 text-gray-400 border border-gray-500/30'
+                                                    ? 'bg-green-600/20 text-green-500 border border-green-500/30'
+                                                    : 'bg-gray-600/20 text-gray-400 border border-gray-500/30'
                                                     }`}>
                                                     {workflow.enabled ? 'Active' : 'Inactive'}
                                                 </span>
@@ -233,9 +207,9 @@ export default function WorkflowsPage() {
                             </svg>
                             <h3 className="text-lg font-bold text-gray-900">Delete Workflow</h3>
                         </div>
-                        
+
                         <p className="text-sm text-gray-600 mb-6">
-                            Are you sure you want to delete "{workflows.find(w => w.id === showDeleteConfirm)?.title}"? 
+                            Are you sure you want to delete "{workflows.find(w => w.id === showDeleteConfirm)?.title}"?
                             This action cannot be undone.
                         </p>
 
