@@ -7,8 +7,8 @@ import axios from 'axios';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { TriggerType, CredentialFormField, StoredCredential } from '@/types/workflows.interface';
-import { fetchTriggerTypes } from '@/lib/api/workflow';
+import { ActionsI, CredentialFormField, StoredCredential } from '@/types/workflows.interface';
+import { fetchTriggerTypes, fetchActionTypes } from '@/lib/api/workflow';
 
 const actionCredentialMapping: Record<string, {
     platform: string;
@@ -38,119 +38,6 @@ interface CustomNodeProps {
     data: any;
     id: string;
 }
-
-
-const actionTypes: TriggerType[] = [
-    {
-        id: 'telegram-api',
-        label: 'Telegram API',
-        color: '#0088CC',
-        description: 'Send a message via Telegram',
-        configFields: [
-            {
-                type: 'text',
-                label: 'Chat ID',
-                placeholder: 'Enter recipient chat ID',
-                required: true,
-                key: 'chatId'
-            },
-            {
-                type: 'textarea',
-                label: 'Message',
-                placeholder: 'Enter your message',
-                required: true,
-                key: 'message'
-            }
-        ]
-    },
-    {
-        id: 'email-send',
-        label: 'Email Send',
-        color: '#EF4444',
-        description: 'Send an email to recipients',
-        configFields: [
-            {
-                type: 'email',
-                label: 'Recipient',
-                placeholder: 'recipient@example.com',
-                required: true,
-                key: 'to'
-            },
-            {
-                type: 'text',
-                label: 'Subject',
-                placeholder: 'Email subject',
-                required: true,
-                key: 'subject'
-            },
-            {
-                type: 'textarea',
-                label: 'Body',
-                placeholder: 'Email content',
-                required: true,
-                key: 'body'
-            }
-        ]
-    },
-    {
-        id: 'webhook',
-        label: 'Webhook',
-        color: '#8B5CF6',
-        description: 'Send data to a webhook URL',
-        configFields: [
-            {
-                type: 'text',
-                label: 'URL',
-                placeholder: 'https://example.com/webhook',
-                required: true,
-                key: 'url'
-            },
-            {
-                type: 'select',
-                label: 'Method',
-                required: true,
-                options: [
-                    { label: 'GET', value: 'get' },
-                    { label: 'POST', value: 'post' },
-                    { label: 'PUT', value: 'put' },
-                    { label: 'DELETE', value: 'delete' }
-                ],
-                key: 'method'
-            },
-            {
-                type: 'textarea',
-                label: 'Payload',
-                placeholder: '{"key": "value"}',
-                key: 'payload'
-            }
-        ]
-    },
-    {
-        id: 'gemini',
-        label: 'Gemini',
-        color: '#6366F1',
-        description: 'Use Gemini to generate content',
-        configFields: [
-            {
-                type: 'text',
-                label: 'Prompt',
-                placeholder: 'Enter your prompt or query',
-                required: true,
-                key: 'prompt'
-            },
-            {
-                type: 'select',
-                label: 'Model',
-                required: true,
-                options: [
-                    { label: 'Gemini-2', value: 'gemini2' },
-                    { label: 'Gemini-2.5', value: 'gemini2.5' }
-                ],
-                key: 'model'
-            }
-        ]
-    }
-];
 
 const CustomNode = ({ data, id }: CustomNodeProps) => {
     const nodeData = data as any;
@@ -240,17 +127,18 @@ export default function CreateWorkflow() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [configValues, setConfigValues] = useState<Record<string, any>>({});
-    const [currentActionType, setCurrentActionType] = useState<TriggerType | null>(null);
+    const [currentActionType, setCurrentActionType] = useState<ActionsI | null>(null);
     const [showConfigForm, setShowConfigForm] = useState<boolean>(false);
 
-    const [triggerTypes, setTriggerTypes] = useState<TriggerType[]>([]);
+    const [triggerTypes, setTriggerTypes] = useState<ActionsI[]>([]);
     const [isLoadingTypes, setIsLoadingTypes] = useState(true);
+    const [actionTypes, setActionTypes] = useState<ActionsI[]>([]);
 
     // Credential states
     const [storedCredentials, setStoredCredentials] = useState<StoredCredential[]>([]);
     const [showCredentialForm, setShowCredentialForm] = useState(false);
     const [credentialFormData, setCredentialFormData] = useState<Record<string, string>>({});
-    const [pendingActionType, setPendingActionType] = useState<TriggerType | null>(null);
+    const [pendingActionType, setPendingActionType] = useState<ActionsI | null>(null);
     const [isOAuthLoading, setIsOAuthLoading] = useState(false);
 
     // Form trigger states
@@ -267,24 +155,28 @@ export default function CreateWorkflow() {
     }, [token]);
 
     useEffect(() => {
-        const loadTriggerTypes = async () => {
+        const loadTypes = async () => {
             if (!token) return;
             try {
                 setIsLoadingTypes(true);
-                const triggers = await fetchTriggerTypes(token);
-                console.log(triggers)
+                const [triggers, actions] = await Promise.all([
+                    fetchTriggerTypes(token),
+                    fetchActionTypes(token)
+                ]);
+                console.log('Triggers:', triggers);
+                console.log('Actions:', actions);
                 setTriggerTypes(triggers);
+                setActionTypes(actions);
             } catch (error) {
-                console.error('Error fetching trigger types:', error);
-                toast.error('Failed to load trigger types');
+                console.error('Error fetching types:', error);
+                toast.error('Failed to load workflow types');
             } finally {
                 setIsLoadingTypes(false);
             }
         };
 
-        loadTriggerTypes();
+        loadTypes();
     }, [token]);
-
     const fetchStoredCredentials = async () => {
         try {
             const response = await axios.get(
@@ -301,7 +193,7 @@ export default function CreateWorkflow() {
         return storedCredentials.some(cred => cred.platform === platform);
     };
 
-    const handleSelectActionType = (actionType: TriggerType) => {
+    const handleSelectActionType = (actionType: ActionsI) => {
         const credentialInfo = actionCredentialMapping[actionType.id];
 
         if (credentialInfo) {
@@ -621,7 +513,7 @@ export default function CreateWorkflow() {
         }
     };
 
-    const addTriggerNode = (triggerType: TriggerType) => {
+    const addTriggerNode = (triggerType: ActionsI) => {
         if (triggerType.id === 'form-submission') {
             // Directly create the form trigger without configuration
             createFormTrigger();
@@ -694,7 +586,7 @@ export default function CreateWorkflow() {
         }
     };
 
-    const addActionNode = (actionType: TriggerType, config: Record<string, any> = {}) => {
+    const addActionNode = (actionType: ActionsI, config: Record<string, any> = {}) => {
         const parentNode = nodes.find(node => node.id === selectedParentId);
         if (!parentNode) return;
 

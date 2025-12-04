@@ -6,7 +6,7 @@ export interface WorkflowI {
     updated_at: string;
 }
 
-export interface TriggerType {
+export interface ActionsI {
     id: string;
     label: string;
     color: string;
