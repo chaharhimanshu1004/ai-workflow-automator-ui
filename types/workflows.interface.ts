@@ -5,3 +5,35 @@ export interface WorkflowI {
     created_at: string;
     updated_at: string;
 }
+
+export interface TriggerType {
+    id: string;
+    label: string;
+    color: string;
+    description?: string;
+    configFields?: ActionConfig[];
+}
+
+export interface ActionConfig {
+    type: 'text' | 'email' | 'number' | 'select' | 'textarea';
+    label: string;
+    placeholder?: string;
+    required?: boolean;
+    options?: { label: string; value: string }[];
+    key: string;
+}
+
+export interface StoredCredential {
+    id: string;
+    platform: string;
+    label: string;
+    createdAt: string;
+}
+
+export interface CredentialFormField {
+    key: string;
+    label: string;
+    type: 'text' | 'password' | 'email';
+    placeholder?: string;
+    required: boolean;
+}

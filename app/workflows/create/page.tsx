@@ -7,39 +7,8 @@ import axios from 'axios';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
-
-interface TriggerType {
-    id: string;
-    label: string;
-    color: string;
-    icon: string;
-    description?: string;
-    configFields?: ActionConfig[];
-}
-
-interface ActionConfig {
-    type: 'text' | 'email' | 'number' | 'select' | 'textarea';
-    label: string;
-    placeholder?: string;
-    required?: boolean;
-    options?: { label: string; value: string }[];
-    key: string;
-}
-
-interface StoredCredential {
-    id: string;
-    platform: string;
-    label: string;
-    createdAt: string;
-}
-
-interface CredentialFormField {
-    key: string;
-    label: string;
-    type: 'text' | 'password' | 'email';
-    placeholder?: string;
-    required: boolean;
-}
+import { TriggerType, CredentialFormField, StoredCredential } from '@/types/workflows.interface';
+import { fetchTriggerTypes } from '@/lib/api/workflow';
 
 const actionCredentialMapping: Record<string, {
     platform: string;
@@ -64,42 +33,18 @@ const actionCredentialMapping: Record<string, {
     }
 };
 
-interface NodeData {
-    label: string;
-    type: string;
-    icon: string;
-    color: string;
-    onAddNode?: (id: string) => void;
-}
 
 interface CustomNodeProps {
     data: any;
     id: string;
 }
 
-const triggerTypes: TriggerType[] = [
-    {
-        id: 'manual-trigger',
-        label: 'Manual Trigger',
-        color: '#10B981',
-        icon: '▶️',
-        description: 'Triggered manually by the user',
-    },
-    {
-        id: 'form-submission',
-        label: 'Form Submission',
-        color: '#3B82F6',
-        icon: '📝',
-        description: 'Triggered when a form is submitted',
-    },
-];
 
 const actionTypes: TriggerType[] = [
     {
         id: 'telegram-api',
         label: 'Telegram API',
         color: '#0088CC',
-        icon: '📱',
         description: 'Send a message via Telegram',
         configFields: [
             {
@@ -122,7 +67,6 @@ const actionTypes: TriggerType[] = [
         id: 'email-send',
         label: 'Email Send',
         color: '#EF4444',
-        icon: '📧',
         description: 'Send an email to recipients',
         configFields: [
             {
@@ -152,7 +96,6 @@ const actionTypes: TriggerType[] = [
         id: 'webhook',
         label: 'Webhook',
         color: '#8B5CF6',
-        icon: '🔗',
         description: 'Send data to a webhook URL',
         configFields: [
             {
@@ -186,7 +129,6 @@ const actionTypes: TriggerType[] = [
         id: 'gemini',
         label: 'Gemini',
         color: '#6366F1',
-        icon: '🤖',
         description: 'Use Gemini to generate content',
         configFields: [
             {
@@ -224,7 +166,7 @@ const CustomNode = ({ data, id }: CustomNodeProps) => {
             >
                 <Handle type="target" position={Position.Top} />
                 <div className="flex items-center">
-                    <span className="mr-1 text-xs">{nodeData.icon}</span>
+                    {/* <span className="mr-1 text-xs">{nodeData.icon}</span> */}
                     <div>
                         <div className="text-[10px] font-semibold leading-tight">{nodeData.label}</div>
                         {primaryConfigValue && (
@@ -301,6 +243,9 @@ export default function CreateWorkflow() {
     const [currentActionType, setCurrentActionType] = useState<TriggerType | null>(null);
     const [showConfigForm, setShowConfigForm] = useState<boolean>(false);
 
+    const [triggerTypes, setTriggerTypes] = useState<TriggerType[]>([]);
+    const [isLoadingTypes, setIsLoadingTypes] = useState(true);
+
     // Credential states
     const [storedCredentials, setStoredCredentials] = useState<StoredCredential[]>([]);
     const [showCredentialForm, setShowCredentialForm] = useState(false);
@@ -315,11 +260,29 @@ export default function CreateWorkflow() {
 
     const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
-    // Fetch stored credentials on component mount
     useEffect(() => {
         if (token) {
             fetchStoredCredentials();
         }
+    }, [token]);
+
+    useEffect(() => {
+        const loadTriggerTypes = async () => {
+            if (!token) return;
+            try {
+                setIsLoadingTypes(true);
+                const triggers = await fetchTriggerTypes(token);
+                console.log(triggers)
+                setTriggerTypes(triggers);
+            } catch (error) {
+                console.error('Error fetching trigger types:', error);
+                toast.error('Failed to load trigger types');
+            } finally {
+                setIsLoadingTypes(false);
+            }
+        };
+
+        loadTriggerTypes();
     }, [token]);
 
     const fetchStoredCredentials = async () => {
@@ -548,7 +511,7 @@ export default function CreateWorkflow() {
                     data: {
                         label: nodeData.label as string,
                         type: nodeData.type as string,
-                        icon: nodeData.icon as string,
+                        // icon: nodeData.icon as string,
                         color: nodeData.color as string,
                         config: nodeData.config as Record<string, any> || {}
                     },
@@ -672,7 +635,7 @@ export default function CreateWorkflow() {
             data: {
                 label: triggerType.label,
                 type: triggerType.id,
-                icon: triggerType.icon,
+                // icon: triggerType.icon,
                 color: triggerType.color,
                 onAddNode: handleAddNode,
                 onDeleteNode: handleDeleteNode,
@@ -707,7 +670,7 @@ export default function CreateWorkflow() {
                 data: {
                     label: 'Form Submission',
                     type: 'form-submission',
-                    icon: '📝',
+                    // icon: '📝',
                     color: '#3B82F6',
                     onAddNode: handleAddNode,
                     onDeleteNode: handleDeleteNode,
@@ -744,7 +707,7 @@ export default function CreateWorkflow() {
             data: {
                 label: actionType.label,
                 type: actionType.id,
-                icon: actionType.icon,
+                // icon: actionType.icon,
                 color: actionType.color,
                 onAddNode: handleAddNode,
                 onDeleteNode: handleDeleteNode,
@@ -812,7 +775,7 @@ export default function CreateWorkflow() {
                                 data: {
                                     label: nodeData.label as string,
                                     type: nodeData.type as string,
-                                    icon: nodeData.icon as string,
+                                    // icon: nodeData.icon as string,
                                     color: nodeData.color as string,
                                     config: nodeData.config as Record<string, any> || {}
                                 },
@@ -864,7 +827,7 @@ export default function CreateWorkflow() {
         }
     }, [nodes, edges, token, workflowId, authHeaders]);
 
-    if (isLoading) {
+    if (isLoading || isLoadingTypes) {
         return (
             <div className="flex items-center justify-center w-full h-screen">
                 <div className="text-center">
@@ -890,7 +853,7 @@ export default function CreateWorkflow() {
                                     className="flex items-center p-3 border rounded-lg hover:bg-gray-50 transition text-left"
                                     style={{ borderColor: triggerType.color }}
                                 >
-                                    <span className="mr-3 text-xl">{triggerType.icon}</span>
+                                    {/* <span className="mr-3 text-xl">{triggerType.icon}</span> */}
                                     <div>
                                         <div className="font-medium text-sm">{triggerType.label}</div>
                                         <div className="text-xs text-gray-500">{triggerType.description}</div>
@@ -913,7 +876,7 @@ export default function CreateWorkflow() {
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-30">
                     <div className="bg-white rounded-lg p-6 shadow-xl max-w-md w-full mx-4">
                         <div className="flex items-center mb-4">
-                            <span className="mr-3 text-2xl">{pendingActionType.icon}</span>
+                            {/* <span className="mr-3 text-2xl">{pendingActionType.icon}</span> */}
                             <div>
                                 <h3 className="text-lg font-bold">Setup {pendingActionType.label}</h3>
                                 <p className="text-sm text-gray-600">
@@ -1038,7 +1001,7 @@ export default function CreateWorkflow() {
                                                 className="flex items-center p-3 border rounded-lg hover:bg-gray-50 transition text-left relative"
                                                 style={{ borderColor: actionType.color }}
                                             >
-                                                <span className="mr-3 text-xl">{actionType.icon}</span>
+                                                {/* <span className="mr-3 text-xl">{actionType.icon}</span> */}
                                                 <div className="flex-1">
                                                     <div className="font-medium text-sm">{actionType.label}</div>
                                                     {actionType.description && (
