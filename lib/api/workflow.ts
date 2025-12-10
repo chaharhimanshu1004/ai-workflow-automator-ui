@@ -18,14 +18,14 @@ export async function deleteWorkflow(id: string, token: string): Promise<void> {
 }
 
 export async function fetchTriggerTypes(token: string): Promise<ActionsI[]> {
-    const response = await axios.get(`${config.BE_BASE_URL}/trigger-types`, {
+    const response = await axios.get(`${config.BE_BASE_URL}/workflow/trigger-types`, {
         headers: { Authorization: `Bearer ${token}` }
     });
     return response.data;
 }
 
 export async function fetchActionTypes(token: string): Promise<ActionsI[]> {
-    const response = await axios.get(`${config.BE_BASE_URL}/action-types`, {
+    const response = await axios.get(`${config.BE_BASE_URL}/workflow/action-types`, {
         headers: { Authorization: `Bearer ${token}` }
     });
     return response.data;

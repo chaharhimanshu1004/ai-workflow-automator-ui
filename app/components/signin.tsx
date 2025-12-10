@@ -12,7 +12,7 @@ export default function SignIn() {
 
     const handleGoogleSuccess = async (creds: any) => {
         try {
-            const response = await axios.post(`${process.env.NEXT_PUBLIC_BE_BASE_URL}/auth/google`,
+            const response = await axios.post(`${process.env.NEXT_PUBLIC_BE_BASE_URL}/user/auth/google`,
                 { token: creds.credential },
                 { headers: { "Content-Type": "application/json" } }
             )

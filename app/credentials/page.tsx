@@ -59,7 +59,7 @@ export default function CredentialsPage() {
             if (!token) return;
             try {
                 const response = await axios.get(
-                    `${process.env.NEXT_PUBLIC_BE_BASE_URL}/credentials`,
+                    `${process.env.NEXT_PUBLIC_BE_BASE_URL}/creds`,
                     { headers: authHeaders }
                 );
                 setCredentials(response.data);
@@ -97,7 +97,7 @@ export default function CredentialsPage() {
             return;
         }
         try {
-            const response = await axios.post(`${process.env.NEXT_PUBLIC_BE_BASE_URL}/save-creds`, {
+            const response = await axios.post(`${process.env.NEXT_PUBLIC_BE_BASE_URL}/creds/save`, {
                 title: credentialFields[selectedType]?.[0]?.title || "My Credential",
                 platform: selectedType,
                 data: formValues
@@ -113,7 +113,7 @@ export default function CredentialsPage() {
             setIsOAuthLoading(false);
             // Refetch credentials
             const creds = await axios.get(
-                `${process.env.NEXT_PUBLIC_BE_BASE_URL}/credentials`,
+                `${process.env.NEXT_PUBLIC_BE_BASE_URL}/creds`,
                 { headers: authHeaders }
             );
             setCredentials(creds.data);
@@ -129,7 +129,7 @@ export default function CredentialsPage() {
             setDeletingId(id);
             
             await axios.delete(
-                `${process.env.NEXT_PUBLIC_BE_BASE_URL}/credentials/${id}`,
+                `${process.env.NEXT_PUBLIC_BE_BASE_URL}/creds/${id}`,
                 { headers: authHeaders }
             );
 

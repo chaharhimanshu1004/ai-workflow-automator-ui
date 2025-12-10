@@ -180,7 +180,7 @@ export default function CreateWorkflow() {
     const fetchStoredCredentials = async () => {
         try {
             const response = await axios.get(
-                `${process.env.NEXT_PUBLIC_BE_BASE_URL}/credentials`,
+                `${process.env.NEXT_PUBLIC_BE_BASE_URL}/creds`,
                 { headers: authHeaders }
             );
             setStoredCredentials(response.data);
@@ -445,7 +445,7 @@ export default function CreateWorkflow() {
                 );
             } else {
                 const response = await axios.post(
-                    `${process.env.NEXT_PUBLIC_BE_BASE_URL}/create-workflow`,
+                    `${process.env.NEXT_PUBLIC_BE_BASE_URL}/create`,
                     workflowData,
                     { headers: authHeaders }
                 );
