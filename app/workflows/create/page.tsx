@@ -269,7 +269,7 @@ export default function CreateWorkflow() {
 
         try {
             await axios.post(
-                `${process.env.NEXT_PUBLIC_BE_BASE_URL}/save-creds`,
+                `${process.env.NEXT_PUBLIC_BE_BASE_URL}/creds/save`,
                 {
                     title: credentialInfo.fields?.[0]?.label || `${credentialInfo.platform} Credential`,
                     platform: credentialInfo.platform,
@@ -445,7 +445,7 @@ export default function CreateWorkflow() {
                 );
             } else {
                 const response = await axios.post(
-                    `${process.env.NEXT_PUBLIC_BE_BASE_URL}/create`,
+                    `${process.env.NEXT_PUBLIC_BE_BASE_URL}/workflow/create`,
                     workflowData,
                     { headers: authHeaders }
                 );
