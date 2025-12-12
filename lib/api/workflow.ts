@@ -30,3 +30,27 @@ export async function fetchActionTypes(token: string): Promise<ActionsI[]> {
     });
     return response.data;
 }
+
+export async function fetchWorkflowById(id: string, token: string): Promise<any> {
+    const response = await axios.get(`${config.BE_BASE_URL}/workflow/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+}
+
+export async function createWorkflow(workflowData: any, token: string): Promise<any> {
+    const response = await axios.post(
+        `${config.BE_BASE_URL}/workflow/create`,
+        workflowData,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return response.data;
+}
+
+export async function updateWorkflow(id: string, workflowData: any, token: string): Promise<void> {
+    await axios.put(
+        `${config.BE_BASE_URL}/workflow/${id}`,
+        workflowData,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+}

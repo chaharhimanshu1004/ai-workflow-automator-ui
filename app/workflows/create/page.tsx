@@ -1,14 +1,15 @@
 "use client"
 
 import { useState, useCallback, useEffect } from 'react';
-import { ReactFlow, applyNodeChanges, applyEdgeChanges, addEdge, Background, Handle, Position, Node, Edge } from '@xyflow/react';
+import { ReactFlow, applyNodeChanges, applyEdgeChanges, addEdge, Background, Node, Edge } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import axios from 'axios';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { ActionsI, CredentialFormField, StoredCredential } from '@/types/workflows.interface';
-import { fetchTriggerTypes, fetchActionTypes } from '@/lib/api/workflow';
+import { ActionsI, StoredCredential } from '@/types/workflows.interface';
+import { createWorkflow, fetchActionTypes, fetchWorkflowById, fetchWorkflows, fetchTriggerTypes, updateWorkflow } from '@/lib/api/workflow';
+import { initiateGmailOAuth, createFormTrigger } from '@/lib/api/helpers';
+import { fetchStoredCredentials, saveCredentials } from '@/lib/api/credential';
 import { actionCredentialMapping } from '@/lib/constants/credentials';
 import { CustomNode, AddTriggerNode } from '@/components/workflow';
 
@@ -16,7 +17,6 @@ const nodeTypeComponents = {
     custom: CustomNode,
     addTrigger: AddTriggerNode,
 };
-
 
 export default function CreateWorkflow() {
     const [nodes, setNodes] = useState<Node[]>([
@@ -55,13 +55,20 @@ export default function CreateWorkflow() {
     // Form trigger states
     const [generatedFormUrl, setGeneratedFormUrl] = useState<string | null>(null);
     const [showFormUrlModal, setShowFormUrlModal] = useState(false);
-    const [showTriggerConfigForm, setShowTriggerConfigForm] = useState(false);
 
-    const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+    const loadStoredCredentials = async () => {
+        if (!token) return;
+        try {
+            const credentials = await fetchStoredCredentials(token);
+            setStoredCredentials(credentials);
+        } catch (error) {
+            console.error('Error fetching credentials:', error);
+        }
+    };
 
     useEffect(() => {
         if (token) {
-            fetchStoredCredentials();
+            loadStoredCredentials();
         }
     }, [token]);
 
@@ -86,17 +93,6 @@ export default function CreateWorkflow() {
 
         loadTypes();
     }, [token]);
-    const fetchStoredCredentials = async () => {
-        try {
-            const response = await axios.get(
-                `${process.env.NEXT_PUBLIC_BE_BASE_URL}/creds`,
-                { headers: authHeaders }
-            );
-            setStoredCredentials(response.data);
-        } catch (error) {
-            console.error('Error fetching credentials:', error);
-        }
-    };
 
     const checkCredentialExists = (platform: string): boolean => {
         return storedCredentials.some(cred => cred.platform === platform);
@@ -151,13 +147,11 @@ export default function CreateWorkflow() {
     };
 
     const handleGmailOAuth = async () => {
+        if (!token) return;
         try {
             setIsOAuthLoading(true);
-            const response = await axios.get(
-                `${process.env.NEXT_PUBLIC_BE_BASE_URL}/oauth/gmail/authorize`,
-                { headers: authHeaders }
-            );
-            window.location.href = response.data.auth_url;
+            const authUrl = await initiateGmailOAuth(token);
+            window.location.href = authUrl;
         } catch (error) {
             console.error('OAuth initiation error:', error);
             toast.error('Failed to initiate Gmail OAuth');
@@ -166,7 +160,7 @@ export default function CreateWorkflow() {
     };
 
     const handleCredentialSubmit = async () => {
-        if (!pendingActionType) return;
+        if (!pendingActionType || !token) return;
 
         const credentialInfo = actionCredentialMapping[pendingActionType.id];
         if (!credentialInfo) return;
@@ -177,23 +171,11 @@ export default function CreateWorkflow() {
         }
 
         try {
-            await axios.post(
-                `${process.env.NEXT_PUBLIC_BE_BASE_URL}/creds/save`,
-                {
-                    title: credentialInfo.fields?.[0]?.label || `${credentialInfo.platform} Credential`,
-                    platform: credentialInfo.platform,
-                    data: credentialFormData
-                },
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                        ...authHeaders
-                    }
-                }
-            );
+            const label = credentialInfo.fields?.[0]?.label || `${credentialInfo.platform} Credential`;
+            await saveCredentials(credentialInfo.platform, credentialFormData, label, token);
             toast.success(`${credentialInfo.platform} credentials saved successfully!`);
 
-            await fetchStoredCredentials();
+            await loadStoredCredentials();
             setShowCredentialForm(false);
 
             setCurrentActionType(pendingActionType);
@@ -228,6 +210,7 @@ export default function CreateWorkflow() {
         return nodeIds.length > 0 ? Math.max(...nodeIds) + 1 : 1;
     };
 
+    // Load workflow on mount if ID exists
     useEffect(() => {
         const id = searchParams.get('id');
         if (id && token) {
@@ -237,14 +220,10 @@ export default function CreateWorkflow() {
     }, [searchParams, token]);
 
     const loadWorkflow = async (id: string) => {
+        if (!token) return;
         try {
             setIsLoading(true);
-            const response = await axios.get(
-                `${process.env.NEXT_PUBLIC_BE_BASE_URL}/workflow/${id}`,
-                { headers: authHeaders }
-            );
-
-            const workflow = response.data;
+            const workflow = await fetchWorkflowById(id, token);
 
             if (!workflow.nodes || Object.keys(workflow.nodes).length === 0) {
                 setNodes([{
@@ -312,7 +291,6 @@ export default function CreateWorkflow() {
                     data: {
                         label: nodeData.label as string,
                         type: nodeData.type as string,
-                        // icon: nodeData.icon as string,
                         color: nodeData.color as string,
                         config: nodeData.config as Record<string, any> || {}
                     },
@@ -347,25 +325,18 @@ export default function CreateWorkflow() {
         try {
             const workflowData = prepareWorkflowData();
             if (workflowId) {
-                await axios.put(
-                    `${process.env.NEXT_PUBLIC_BE_BASE_URL}/workflow/${workflowId}`,
-                    workflowData,
-                    { headers: authHeaders }
-                );
+                await updateWorkflow(workflowId, workflowData, token);
             } else {
-                const response = await axios.post(
-                    `${process.env.NEXT_PUBLIC_BE_BASE_URL}/workflow/create`,
-                    workflowData,
-                    { headers: authHeaders }
-                );
-                setWorkflowId(response.data.id);
-                router.push(`/workflows/create?id=${response.data.id}`, { scroll: false });
+                const response = await createWorkflow(workflowData, token);
+                setWorkflowId(response.id);
+                router.push(`/workflows/create?id=${response.id}`, { scroll: false });
             }
         } catch (error) {
             console.error('Error saving workflow:', error);
         }
     };
 
+    // Auto-save workflow
     useEffect(() => {
         if (nodes.length === 1 && nodes[0].type === 'addTrigger') return;
 
@@ -422,44 +393,10 @@ export default function CreateWorkflow() {
         }
     };
 
-    const addTriggerNode = (triggerType: ActionsI) => {
-        if (triggerType.id === 'form-submission') {
-            // Directly create the form trigger without configuration
-            createFormTrigger();
-            return;
-        }
-
-        const newNode: Node = {
-            id: `node-${nodeId}`,
-            type: 'custom',
-            position: { x: 400, y: 300 },
-            data: {
-                label: triggerType.label,
-                type: triggerType.id,
-                // icon: triggerType.icon,
-                color: triggerType.color,
-                onAddNode: handleAddNode,
-                onDeleteNode: handleDeleteNode,
-            },
-        };
-
-        setNodes([newNode]);
-        setNodeId((id) => id + 1);
-        setShowTriggerSelector(false);
-    };
-
-    const createFormTrigger = async () => {
+    const handleCreateFormTrigger = async () => {
+        if (!token) return;
         try {
-            const response = await axios.post(
-                `${process.env.NEXT_PUBLIC_BE_BASE_URL}/create-form-trigger`,
-                {
-                    workflowId: workflowId,
-                    triggerType: 'form-submission'
-                },
-                { headers: authHeaders }
-            );
-
-            const { formId, webhookUrl } = response.data;
+            const { formId, webhookUrl } = await createFormTrigger(workflowId, token);
             const formUrl = `${window.location.origin}/forms/${formId}`;
             setGeneratedFormUrl(formUrl);
             setShowFormUrlModal(true);
@@ -471,7 +408,6 @@ export default function CreateWorkflow() {
                 data: {
                     label: 'Form Submission',
                     type: 'form-submission',
-                    // icon: '📝',
                     color: '#3B82F6',
                     onAddNode: handleAddNode,
                     onDeleteNode: handleDeleteNode,
@@ -495,6 +431,30 @@ export default function CreateWorkflow() {
         }
     };
 
+    const addTriggerNode = (triggerType: ActionsI) => {
+        if (triggerType.id === 'form-submission') {
+            handleCreateFormTrigger();
+            return;
+        }
+
+        const newNode: Node = {
+            id: `node-${nodeId}`,
+            type: 'custom',
+            position: { x: 400, y: 300 },
+            data: {
+                label: triggerType.label,
+                type: triggerType.id,
+                color: triggerType.color,
+                onAddNode: handleAddNode,
+                onDeleteNode: handleDeleteNode,
+            },
+        };
+
+        setNodes([newNode]);
+        setNodeId((id) => id + 1);
+        setShowTriggerSelector(false);
+    };
+
     const addActionNode = (actionType: ActionsI, config: Record<string, any> = {}) => {
         const parentNode = nodes.find(node => node.id === selectedParentId);
         if (!parentNode) return;
@@ -508,7 +468,6 @@ export default function CreateWorkflow() {
             data: {
                 label: actionType.label,
                 type: actionType.id,
-                // icon: actionType.icon,
                 color: actionType.color,
                 onAddNode: handleAddNode,
                 onDeleteNode: handleDeleteNode,
@@ -535,7 +494,7 @@ export default function CreateWorkflow() {
     }, [handleAddTrigger]);
 
     const handleDeleteNode = useCallback(async (nodeId: string) => {
-        if (nodeId === 'add-trigger') return;
+        if (nodeId === 'add-trigger' || !token) return;
 
         try {
             const nodeToDelete = nodes.find(n => n.id === nodeId);
@@ -563,7 +522,7 @@ export default function CreateWorkflow() {
             setNodes(updatedNodes);
             setEdges(updatedEdges);
 
-            if (token && workflowId) {
+            if (workflowId) {
                 try {
                     const currentNodes = updatedNodes.filter(node => node.type !== 'addTrigger');
                     const currentEdges = updatedEdges;
@@ -576,7 +535,6 @@ export default function CreateWorkflow() {
                                 data: {
                                     label: nodeData.label as string,
                                     type: nodeData.type as string,
-                                    // icon: nodeData.icon as string,
                                     color: nodeData.color as string,
                                     config: nodeData.config as Record<string, any> || {}
                                 },
@@ -603,16 +561,7 @@ export default function CreateWorkflow() {
                         connections: connectionsObject
                     };
 
-                    await axios.put(
-                        `${process.env.NEXT_PUBLIC_BE_BASE_URL}/workflow/${workflowId}`,
-                        workflowData,
-                        {
-                            headers: {
-                                'Content-Type': 'application/json',
-                                ...authHeaders
-                            }
-                        }
-                    );
+                    await updateWorkflow(workflowId, workflowData, token);
                     toast.success('Node deleted successfully');
                 } catch (error) {
                     console.error('Error saving workflow after deletion:', error);
@@ -626,7 +575,7 @@ export default function CreateWorkflow() {
             console.error('Error deleting node:', error);
             toast.error('Failed to delete node');
         }
-    }, [nodes, edges, token, workflowId, authHeaders]);
+    }, [nodes, edges, token, workflowId]);
 
     if (isLoading || isLoadingTypes) {
         return (
@@ -654,7 +603,6 @@ export default function CreateWorkflow() {
                                     className="flex items-center p-3 border rounded-lg hover:bg-gray-50 transition text-left"
                                     style={{ borderColor: triggerType.color }}
                                 >
-                                    {/* <span className="mr-3 text-xl">{triggerType.icon}</span> */}
                                     <div>
                                         <div className="font-medium text-sm">{triggerType.label}</div>
                                         <div className="text-xs text-gray-500">{triggerType.description}</div>
@@ -677,7 +625,6 @@ export default function CreateWorkflow() {
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-30">
                     <div className="bg-white rounded-lg p-6 shadow-xl max-w-md w-full mx-4">
                         <div className="flex items-center mb-4">
-                            {/* <span className="mr-3 text-2xl">{pendingActionType.icon}</span> */}
                             <div>
                                 <h3 className="text-lg font-bold">Setup {pendingActionType.label}</h3>
                                 <p className="text-sm text-gray-600">
@@ -802,7 +749,6 @@ export default function CreateWorkflow() {
                                                 className="flex items-center p-3 border rounded-lg hover:bg-gray-50 transition text-left relative"
                                                 style={{ borderColor: actionType.color }}
                                             >
-                                                {/* <span className="mr-3 text-xl">{actionType.icon}</span> */}
                                                 <div className="flex-1">
                                                     <div className="font-medium text-sm">{actionType.label}</div>
                                                     {actionType.description && (
@@ -909,7 +855,7 @@ export default function CreateWorkflow() {
                 </div>
             )}
 
-            {/* Simplified Form URL Modal */}
+            {/* Form URL Modal */}
             {showFormUrlModal && generatedFormUrl && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg p-6 shadow-xl max-w-lg w-full mx-4">
