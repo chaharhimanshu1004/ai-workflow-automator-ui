@@ -37,3 +37,8 @@ export interface CredentialFormField {
     placeholder?: string;
     required: boolean;
 }
+
+export interface CustomNodeProps {
+    data: any;
+    id: string;
+}

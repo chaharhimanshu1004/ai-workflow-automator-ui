@@ -9,103 +9,14 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { ActionsI, CredentialFormField, StoredCredential } from '@/types/workflows.interface';
 import { fetchTriggerTypes, fetchActionTypes } from '@/lib/api/workflow';
-
-const actionCredentialMapping: Record<string, {
-    platform: string;
-    fields?: CredentialFormField[];
-    useOAuth?: boolean;
-}> = {
-    'telegram-api': {
-        platform: 'telegram',
-        fields: [
-            { key: 'botToken', label: 'Bot Token', type: 'password', placeholder: 'Enter your Telegram bot token', required: true }
-        ]
-    },
-    'email-send': {
-        platform: 'gmail',
-        useOAuth: true
-    },
-    'gemini': {
-        platform: 'gemini',
-        fields: [
-            { key: 'apiKey', label: 'API Key', type: 'password', placeholder: 'Enter your Gemini API key', required: true }
-        ]
-    }
-};
-
-
-interface CustomNodeProps {
-    data: any;
-    id: string;
-}
-
-const CustomNode = ({ data, id }: CustomNodeProps) => {
-    const nodeData = data as any;
-    const hasConfig = nodeData.config && Object.keys(nodeData.config).length > 0;
-    const primaryConfigKey = hasConfig ? Object.keys(nodeData.config)[0] : null;
-    const primaryConfigValue = primaryConfigKey ? nodeData.config[primaryConfigKey] : null;
-
-    return (
-        <div className="relative group">
-            <div
-                className="px-1 py-1 shadow-sm rounded border bg-white min-w-[60px]"
-                style={{ borderColor: nodeData.color }}
-            >
-                <Handle type="target" position={Position.Top} />
-                <div className="flex items-center">
-                    {/* <span className="mr-1 text-xs">{nodeData.icon}</span> */}
-                    <div>
-                        <div className="text-[10px] font-semibold leading-tight">{nodeData.label}</div>
-                        {primaryConfigValue && (
-                            <div className="text-[8px] text-gray-500 truncate" style={{ maxWidth: '90px' }}>
-                                {primaryConfigValue.length > 20
-                                    ? primaryConfigValue.substring(0, 20) + '...'
-                                    : primaryConfigValue}
-                            </div>
-                        )}
-                    </div>
-                </div>
-                <Handle type="source" position={Position.Bottom} />
-            </div>
-
-            <button
-                onClick={(e) => {
-                    e.stopPropagation();
-                    nodeData.onDeleteNode && nodeData.onDeleteNode(id);
-                }}
-                className="absolute -top-2 -right-2 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] hover:bg-red-600 transition shadow-sm"
-                title="Delete node"
-            >
-                ×
-            </button>
-
-            <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2">
-                <button
-                    onClick={() => nodeData.onAddNode && nodeData.onAddNode(id)}
-                    className="w-3 h-3 bg-blue-500 text-white rounded-full flex items-center justify-center text-[8px] hover:bg-blue-600 transition shadow-sm"
-                >
-                    +
-                </button>
-            </div>
-        </div>
-    );
-};
-
-const AddTriggerNode = ({ data }: CustomNodeProps) => {
-    return (
-        <div className="px-2 py-1 bg-blue-500 text-white rounded shadow cursor-pointer hover:bg-blue-600 transition">
-            <div className="text-center">
-                <div className="text-xs mb-0">+</div>
-                <div className="font-medium text-[10px]">Add Trigger</div>
-            </div>
-        </div>
-    );
-};
+import { actionCredentialMapping } from '@/lib/constants/credentials';
+import { CustomNode, AddTriggerNode } from '@/components/workflow';
 
 const nodeTypeComponents = {
     custom: CustomNode,
     addTrigger: AddTriggerNode,
 };
+
 
 export default function CreateWorkflow() {
     const [nodes, setNodes] = useState<Node[]>([
@@ -163,8 +74,6 @@ export default function CreateWorkflow() {
                     fetchTriggerTypes(token),
                     fetchActionTypes(token)
                 ]);
-                console.log('Triggers:', triggers);
-                console.log('Actions:', actions);
                 setTriggerTypes(triggers);
                 setActionTypes(actions);
             } catch (error) {
@@ -578,7 +487,7 @@ export default function CreateWorkflow() {
             setNodeId((id) => id + 1);
             setShowTriggerSelector(false);
             toast.success('Form trigger created successfully!');
-            
+
         } catch (error) {
             console.error('Error creating form trigger:', error);
             toast.error('Failed to create form trigger');
@@ -1008,12 +917,12 @@ export default function CreateWorkflow() {
                             <span className="mr-3 text-2xl">📝</span>
                             <h3 className="text-lg font-bold">Form Trigger Created!</h3>
                         </div>
-                        
+
                         <div className="mb-6">
                             <p className="text-sm text-gray-600 mb-4">
                                 Your form trigger is ready! Anyone who submits this form will trigger your workflow:
                             </p>
-                            
+
                             <div className="bg-gray-50 border rounded-md p-3 mb-4">
                                 <div className="flex items-center justify-between">
                                     <code className="text-sm text-blue-600 break-all mr-2">
