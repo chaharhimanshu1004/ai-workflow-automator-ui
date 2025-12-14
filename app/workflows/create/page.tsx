@@ -11,7 +11,7 @@ import { createWorkflow, fetchActionTypes, fetchWorkflowById, fetchWorkflows, fe
 import { initiateGmailOAuth, createFormTrigger } from '@/lib/api/helpers';
 import { fetchStoredCredentials, saveCredentials } from '@/lib/api/credential';
 import { actionCredentialMapping } from '@/lib/constants/credentials';
-import { CustomNode, AddTriggerNode } from '@/components/workflow';
+import { CustomNode, AddTriggerNode, TriggerSelectorModal, CredentialFormModal, ActionSelectorModal, FormUrlModal } from '@/components/workflow';
 
 const nodeTypeComponents = {
     custom: CustomNode,
@@ -590,349 +590,53 @@ export default function CreateWorkflow() {
 
     return (
         <div className="relative w-full h-screen">
-            {/* Trigger Selector Modal */}
-            {showTriggerSelector && (
-                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20">
-                    <div className="bg-white rounded-lg p-6 shadow-xl max-w-md w-full mx-4">
-                        <h3 className="text-lg font-bold mb-4">Select Trigger</h3>
-                        <div className="grid grid-cols-1 gap-3">
-                            {triggerTypes.map((triggerType) => (
-                                <button
-                                    key={triggerType.id}
-                                    onClick={() => addTriggerNode(triggerType)}
-                                    className="flex items-center p-3 border rounded-lg hover:bg-gray-50 transition text-left"
-                                    style={{ borderColor: triggerType.color }}
-                                >
-                                    <div>
-                                        <div className="font-medium text-sm">{triggerType.label}</div>
-                                        <div className="text-xs text-gray-500">{triggerType.description}</div>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                        <button
-                            onClick={() => setShowTriggerSelector(false)}
-                            className="mt-4 w-full bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition"
-                        >
-                            Cancel
-                        </button>
-                    </div>
-                </div>
-            )}
+            <TriggerSelectorModal
+                isOpen={showTriggerSelector}
+                triggerTypes={triggerTypes}
+                onSelectTrigger={addTriggerNode}
+                onClose={() => setShowTriggerSelector(false)}
+            />
 
-            {/* Credential Form Modal */}
-            {showCredentialForm && pendingActionType && (
-                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-30">
-                    <div className="bg-white rounded-lg p-6 shadow-xl max-w-md w-full mx-4">
-                        <div className="flex items-center mb-4">
-                            <div>
-                                <h3 className="text-lg font-bold">Setup {pendingActionType.label}</h3>
-                                <p className="text-sm text-gray-600">
-                                    Please provide your {actionCredentialMapping[pendingActionType.id]?.platform} credentials to continue.
-                                </p>
-                            </div>
-                        </div>
+            <CredentialFormModal
+                isOpen={showCredentialForm}
+                pendingActionType={pendingActionType}
+                credentialFormData={credentialFormData}
+                isOAuthLoading={isOAuthLoading}
+                onFormChange={handleCredentialFormChange}
+                onSubmit={handleCredentialSubmit}
+                onClose={() => {
+                    setShowCredentialForm(false);
+                    setPendingActionType(null);
+                    setCredentialFormData({});
+                    setIsOAuthLoading(false);
+                }}
+            />
 
-                        {actionCredentialMapping[pendingActionType.id]?.useOAuth ? (
-                            <>
-                                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
-                                    <div className="flex">
-                                        <div className="flex-shrink-0">
-                                            <svg className="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                                            </svg>
-                                        </div>
-                                        <div className="ml-3">
-                                            <h3 className="text-sm font-medium text-blue-800">Gmail OAuth Authorization</h3>
-                                            <div className="mt-2 text-sm text-blue-700">
-                                                <p>You'll be redirected to Google to authorize access to your Gmail account.</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+            <ActionSelectorModal
+                isOpen={showActionSelector && !showCredentialForm}
+                actionTypes={actionTypes}
+                currentActionType={currentActionType}
+                showConfigForm={showConfigForm}
+                configValues={configValues}
+                checkCredentialExists={checkCredentialExists}
+                onSelectActionType={handleSelectActionType}
+                onConfigChange={handleConfigChange}
+                onConfigSubmit={handleConfigSubmit}
+                onBackToSelector={() => {
+                    setShowConfigForm(false);
+                    setCurrentActionType(null);
+                }}
+                onClose={() => setShowActionSelector(false)}
+            />
 
-                                <div className="flex space-x-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setShowCredentialForm(false);
-                                            setPendingActionType(null);
-                                            setIsOAuthLoading(false);
-                                        }}
-                                        className="flex-1 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                                        disabled={isOAuthLoading}
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleCredentialSubmit}
-                                        className="flex-1 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-                                        disabled={isOAuthLoading}
-                                    >
-                                        {isOAuthLoading ? (
-                                            <div className="flex items-center justify-center">
-                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                                Authorizing...
-                                            </div>
-                                        ) : (
-                                            'Authorize with Google'
-                                        )}
-                                    </button>
-                                </div>
-                            </>
-                        ) : (
-                            <form onSubmit={(e) => {
-                                e.preventDefault();
-                                handleCredentialSubmit();
-                            }}>
-                                <div className="space-y-4">
-                                    {actionCredentialMapping[pendingActionType.id]?.fields?.map((field) => (
-                                        <div key={field.key} className="form-group">
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                {field.label}
-                                                {field.required && <span className="text-red-500">*</span>}
-                                            </label>
-                                            <input
-                                                type={field.type}
-                                                placeholder={field.placeholder}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                                value={credentialFormData[field.key] || ''}
-                                                onChange={(e) => handleCredentialFormChange(field.key, e.target.value)}
-                                                required={field.required}
-                                            />
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <div className="mt-6 flex space-x-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setShowCredentialForm(false);
-                                            setPendingActionType(null);
-                                            setCredentialFormData({});
-                                        }}
-                                        className="flex-1 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        className="flex-1 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-                                    >
-                                        Save & Continue
-                                    </button>
-                                </div>
-                            </form>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* Action Selector Modal */}
-            {showActionSelector && !showCredentialForm && (
-                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20">
-                    <div className="bg-white rounded-lg p-6 shadow-xl max-w-md w-full mx-4">
-                        {!showConfigForm ? (
-                            <>
-                                <h3 className="text-lg font-bold mb-4">Add Action</h3>
-                                <div className="grid grid-cols-2 gap-3">
-                                    {actionTypes.map((actionType) => {
-                                        const credentialInfo = actionCredentialMapping[actionType.id];
-                                        const hasCredential = credentialInfo ? checkCredentialExists(credentialInfo.platform) : true;
-
-                                        return (
-                                            <button
-                                                key={actionType.id}
-                                                onClick={() => handleSelectActionType(actionType)}
-                                                className="flex items-center p-3 border rounded-lg hover:bg-gray-50 transition text-left relative"
-                                                style={{ borderColor: actionType.color }}
-                                            >
-                                                <div className="flex-1">
-                                                    <div className="font-medium text-sm">{actionType.label}</div>
-                                                    {actionType.description && (
-                                                        <div className="text-xs text-gray-500">{actionType.description}</div>
-                                                    )}
-                                                </div>
-                                                {credentialInfo && !hasCredential && (
-                                                    <div className="absolute top-1 right-1 w-3 h-3 bg-orange-500 rounded-full" title="Credentials required" />
-                                                )}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                                <button
-                                    onClick={() => setShowActionSelector(false)}
-                                    className="mt-4 w-full bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition"
-                                >
-                                    Cancel
-                                </button>
-                            </>
-                        ) : (
-                            <>
-                                <div className="flex items-center mb-4">
-                                    <button
-                                        onClick={() => setShowConfigForm(false)}
-                                        className="mr-2 text-gray-500 hover:text-gray-700"
-                                    >
-                                        ← Back
-                                    </button>
-                                    <h3 className="text-lg font-bold">Configure {currentActionType?.label}</h3>
-                                </div>
-
-                                <form onSubmit={(e) => {
-                                    e.preventDefault();
-                                    handleConfigSubmit();
-                                }}>
-                                    <div className="space-y-4">
-                                        {currentActionType?.configFields?.map((field) => (
-                                            <div key={field.key} className="form-group">
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                    {field.label}
-                                                    {field.required && <span className="text-red-500">*</span>}
-                                                </label>
-
-                                                {field.type === 'text' || field.type === 'email' || field.type === 'number' ? (
-                                                    <input
-                                                        type={field.type}
-                                                        placeholder={field.placeholder}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                                        value={configValues[field.key] || ''}
-                                                        onChange={(e) => handleConfigChange(field.key, e.target.value)}
-                                                        required={field.required}
-                                                    />
-                                                ) : field.type === 'textarea' ? (
-                                                    <textarea
-                                                        placeholder={field.placeholder}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                                        value={configValues[field.key] || ''}
-                                                        onChange={(e) => handleConfigChange(field.key, e.target.value)}
-                                                        required={field.required}
-                                                        rows={3}
-                                                    />
-                                                ) : field.type === 'select' ? (
-                                                    <select
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                                        value={configValues[field.key] || ''}
-                                                        onChange={(e) => handleConfigChange(field.key, e.target.value)}
-                                                        required={field.required}
-                                                    >
-                                                        <option value="">Select an option</option>
-                                                        {field.options?.map((option) => (
-                                                            <option key={option.value} value={option.value}>
-                                                                {option.label}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                ) : null}
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    <div className="mt-6 flex space-x-3">
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setShowConfigForm(false);
-                                                setCurrentActionType(null);
-                                            }}
-                                            className="flex-1 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            className="flex-1 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-                                        >
-                                            Add Node
-                                        </button>
-                                    </div>
-                                </form>
-                            </>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* Form URL Modal */}
-            {showFormUrlModal && generatedFormUrl && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 shadow-xl max-w-lg w-full mx-4">
-                        <div className="flex items-center mb-4">
-                            <span className="mr-3 text-2xl">📝</span>
-                            <h3 className="text-lg font-bold">Form Trigger Created!</h3>
-                        </div>
-
-                        <div className="mb-6">
-                            <p className="text-sm text-gray-600 mb-4">
-                                Your form trigger is ready! Anyone who submits this form will trigger your workflow:
-                            </p>
-
-                            <div className="bg-gray-50 border rounded-md p-3 mb-4">
-                                <div className="flex items-center justify-between">
-                                    <code className="text-sm text-blue-600 break-all mr-2">
-                                        {generatedFormUrl}
-                                    </code>
-                                    <button
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(generatedFormUrl);
-                                            toast.success('Form URL copied to clipboard!');
-                                        }}
-                                        className="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition flex-shrink-0"
-                                    >
-                                        Copy Link
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="flex space-x-2">
-                                <a
-                                    href={generatedFormUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex-1 py-2 bg-green-600 text-white text-center rounded-md hover:bg-green-700 transition text-sm"
-                                >
-                                    🔗 Test Form
-                                </a>
-                            </div>
-                        </div>
-
-                        <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
-                            <div className="flex">
-                                <div className="flex-shrink-0">
-                                    <svg className="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                                    </svg>
-                                </div>
-                                <div className="ml-3">
-                                    <h3 className="text-sm font-medium text-blue-800">How it Works</h3>
-                                    <div className="mt-2 text-sm text-blue-700">
-                                        <ul className="list-disc list-inside space-y-1">
-                                            <li>Share this link with anyone</li>
-                                            <li>When someone submits the form → Your workflow runs</li>
-                                            <li>Form data is available in your workflow actions</li>
-                                            <li>No configuration needed - just share and go!</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end">
-                            <button
-                                onClick={() => {
-                                    setShowFormUrlModal(false);
-                                    setGeneratedFormUrl(null);
-                                }}
-                                className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition"
-                            >
-                                Done
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <FormUrlModal
+                isOpen={showFormUrlModal}
+                formUrl={generatedFormUrl}
+                onClose={() => {
+                    setShowFormUrlModal(false);
+                    setGeneratedFormUrl(null);
+                }}
+            />
 
             <ReactFlow
                 nodes={nodes}
