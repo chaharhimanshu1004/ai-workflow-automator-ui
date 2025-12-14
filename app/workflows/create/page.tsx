@@ -5,13 +5,13 @@ import { ReactFlow, Background } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useAuth } from '@/lib/hooks/useAuth';
 import toast from 'react-hot-toast';
-import { ActionsI, StoredCredential } from '@/types/workflows.interface';
+import { ActionsI } from '@/types/workflows.interface';
 import { fetchActionTypes, fetchTriggerTypes } from '@/lib/api/workflow';
-import { initiateGmailOAuth, createFormTrigger } from '@/lib/api/helpers';
-import { fetchStoredCredentials, saveCredentials } from '@/lib/api/credential';
+import { createFormTrigger } from '@/lib/api/helpers';
 import { actionCredentialMapping } from '@/lib/constants/credentials';
 import { CustomNode, AddTriggerNode, TriggerSelectorModal, CredentialFormModal, ActionSelectorModal, FormUrlModal } from '@/components/workflow';
 import { useWorkflowState } from '@/lib/hooks/useWorkflowState';
+import { useCredentials } from '@/lib/hooks/useCredentials';
 
 const nodeTypeComponents = {
     custom: CustomNode,
@@ -45,7 +45,18 @@ export default function CreateWorkflow() {
         deleteNode,
     } = useWorkflowState(token, handleAddNode, handleDeleteNode);
 
-    // UI state
+    const {
+        storedCredentials,
+        showCredentialForm,
+        credentialFormData,
+        isOAuthLoading,
+        checkCredentialExists,
+        handleCredentialFormChange,
+        handleSaveCredentials,
+        openCredentialForm,
+        closeCredentialForm,
+    } = useCredentials(token);
+
     const [showTriggerSelector, setShowTriggerSelector] = useState(false);
     const [showActionSelector, setShowActionSelector] = useState(false);
     const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
@@ -57,32 +68,11 @@ export default function CreateWorkflow() {
     const [isLoadingTypes, setIsLoadingTypes] = useState(true);
     const [actionTypes, setActionTypes] = useState<ActionsI[]>([]);
 
-    // Credential states
-    const [storedCredentials, setStoredCredentials] = useState<StoredCredential[]>([]);
-    const [showCredentialForm, setShowCredentialForm] = useState(false);
-    const [credentialFormData, setCredentialFormData] = useState<Record<string, string>>({});
     const [pendingActionType, setPendingActionType] = useState<ActionsI | null>(null);
-    const [isOAuthLoading, setIsOAuthLoading] = useState(false);
 
-    // Form trigger states
+    
     const [generatedFormUrl, setGeneratedFormUrl] = useState<string | null>(null);
     const [showFormUrlModal, setShowFormUrlModal] = useState(false);
-
-    const loadStoredCredentials = async () => {
-        if (!token) return;
-        try {
-            const credentials = await fetchStoredCredentials(token);
-            setStoredCredentials(credentials);
-        } catch (error) {
-            console.error('Error fetching credentials:', error);
-        }
-    };
-
-    useEffect(() => {
-        if (token) {
-            loadStoredCredentials();
-        }
-    }, [token]);
 
     useEffect(() => {
         const loadTypes = async () => {
@@ -106,10 +96,6 @@ export default function CreateWorkflow() {
         loadTypes();
     }, [token]);
 
-    const checkCredentialExists = (platform: string): boolean => {
-        return storedCredentials.some(cred => cred.platform === platform);
-    };
-
     const handleSelectActionType = (actionType: ActionsI) => {
         const credentialInfo = actionCredentialMapping[actionType.id];
 
@@ -118,8 +104,7 @@ export default function CreateWorkflow() {
 
             if (!hasCredential) {
                 setPendingActionType(actionType);
-                setCredentialFormData({});
-                setShowCredentialForm(true);
+                openCredentialForm();
                 return;
             }
         }
@@ -151,68 +136,40 @@ export default function CreateWorkflow() {
         setCurrentActionType(null);
     };
 
-    const handleCredentialFormChange = (key: string, value: string) => {
-        setCredentialFormData(prev => ({
-            ...prev,
-            [key]: value
-        }));
-    };
-
-    const handleGmailOAuth = async () => {
-        if (!token) return;
-        try {
-            setIsOAuthLoading(true);
-            const authUrl = await initiateGmailOAuth(token);
-            window.location.href = authUrl;
-        } catch (error) {
-            console.error('OAuth initiation error:', error);
-            toast.error('Failed to initiate Gmail OAuth');
-            setIsOAuthLoading(false);
-        }
-    };
-
     const handleCredentialSubmit = async () => {
         if (!pendingActionType || !token) return;
 
         const credentialInfo = actionCredentialMapping[pendingActionType.id];
         if (!credentialInfo) return;
 
-        if (credentialInfo.useOAuth && credentialInfo.platform === 'gmail') {
-            await handleGmailOAuth();
-            return;
+        const label = credentialInfo.fields?.[0]?.label || `${credentialInfo.platform} Credential`;
+        const saved = await handleSaveCredentials(
+            credentialInfo.platform,
+            credentialFormData,
+            label,
+            credentialInfo.useOAuth || false
+        );
+
+        if (!saved) return;
+
+        closeCredentialForm();
+
+        setCurrentActionType(pendingActionType);
+        setConfigValues({});
+
+        if (pendingActionType.configFields && pendingActionType.configFields.length > 0) {
+            setShowConfigForm(true);
+        } else {
+            addActionNode(pendingActionType);
+            setShowActionSelector(false);
         }
 
-        try {
-            const label = credentialInfo.fields?.[0]?.label || `${credentialInfo.platform} Credential`;
-            await saveCredentials(credentialInfo.platform, credentialFormData, label, token);
-            toast.success(`${credentialInfo.platform} credentials saved successfully!`);
-
-            await loadStoredCredentials();
-            setShowCredentialForm(false);
-
-            setCurrentActionType(pendingActionType);
-            setConfigValues({});
-
-            if (pendingActionType.configFields && pendingActionType.configFields.length > 0) {
-                setShowConfigForm(true);
-            } else {
-                addActionNode(pendingActionType);
-                setShowActionSelector(false);
-            }
-
-            setPendingActionType(null);
-            setCredentialFormData({});
-
-        } catch (error) {
-            console.error('Error saving credentials:', error);
-            toast.error('Failed to save credentials. Please try again.');
-        }
+        setPendingActionType(null);
     };
 
     const handleAddTrigger = useCallback(() => {
         setShowTriggerSelector(true);
     }, []);
-
 
     const handleCreateFormTrigger = async () => {
         if (!token) return;
@@ -228,14 +185,6 @@ export default function CreateWorkflow() {
                 formUrl
             };
 
-            const triggerType: ActionsI = {
-                id: 'form-submission',
-                label: 'Form Submission',
-                color: '#3B82F6',
-                description: 'Triggered when a form is submitted'
-            };
-
-            // Update nodes with callbacks
             setNodes((currentNodes) => {
                 const newNode = {
                     id: `node-${nodeId}`,
@@ -293,7 +242,6 @@ export default function CreateWorkflow() {
 
         addActionNodeFromHook(actionType, selectedParentId, config);
 
-        // Update nodes with callbacks
         setNodes((currentNodes) =>
             currentNodes.map(node => ({
                 ...node,
@@ -313,20 +261,6 @@ export default function CreateWorkflow() {
             handleAddTrigger();
         }
     }, [handleAddTrigger]);
-
-    // // Update nodes with callbacks when they change
-    // useEffect(() => {
-    //     setNodes((currentNodes) =>
-    //         currentNodes.map(node => ({
-    //             ...node,
-    //             data: {
-    //                 ...node.data,
-    //                 onAddNode: handleAddNode,
-    //                 onDeleteNode: handleDeleteNode,
-    //             }
-    //         }))
-    //     );
-    // }, [handleAddNode, handleDeleteNode]);
 
     if (isLoading || isLoadingTypes) {
         return (
@@ -356,10 +290,8 @@ export default function CreateWorkflow() {
                 onFormChange={handleCredentialFormChange}
                 onSubmit={handleCredentialSubmit}
                 onClose={() => {
-                    setShowCredentialForm(false);
+                    closeCredentialForm();
                     setPendingActionType(null);
-                    setCredentialFormData({});
-                    setIsOAuthLoading(false);
                 }}
             />
 
