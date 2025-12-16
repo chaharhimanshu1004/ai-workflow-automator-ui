@@ -25,3 +25,12 @@ export async function saveCredentials(platform: string, credentialData: Record<s
         }
     );
 }
+
+export async function deleteCredential(id: string, token: string): Promise<void> {
+    await axios.delete(
+        `${config.BE_BASE_URL}/creds/${id}`,
+        {
+            headers: { Authorization: `Bearer ${token}` }
+        }
+    );
+}

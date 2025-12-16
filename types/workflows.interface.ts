@@ -26,7 +26,7 @@ export interface ActionConfig {
 export interface StoredCredential {
     id: string;
     platform: string;
-    label: string;
+    title: string;
     createdAt: string;
 }
 

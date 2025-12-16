@@ -22,3 +22,37 @@ export const actionCredentialMapping: Record<string, {
         ]
     }
 };
+
+export const credentialOptions = [
+    { label: "Telegram API", value: "telegram" },
+    { label: "Email send", value: "gmail" },
+    { label: "Gemini", value: "gemini" }
+];
+
+export const credentialFields: Record<string, {
+    label: string;
+    name: string;
+    type: string;
+    placeholder: string;
+    title: string
+}[]> = {
+    telegram: [
+        {
+            label: "Telegram Bot Token",
+            name: "telegramToken",
+            type: "text",
+            placeholder: "Enter your Telegram Bot Token",
+            title: "Telegram Bot Token"
+        },
+    ],
+    gmail: [],
+    gemini: [
+        {
+            label: "Gemini API Key",
+            name: "apiKey",
+            type: "text",
+            placeholder: "sk-...",
+            title: "Gemini API Key"
+        }
+    ]
+};

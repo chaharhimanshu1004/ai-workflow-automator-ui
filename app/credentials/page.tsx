@@ -2,50 +2,15 @@
 import { useState, useEffect } from "react"
 import Sidebar from "@/app/components/Sidebar"
 import { Button } from "@/components/ui/button"
-import axios from "axios"
 import { useAuth } from '@/lib/hooks/useAuth';
 import toast from 'react-hot-toast'
-
-const credentialOptions = [
-    { label: "Telegram API", value: "telegram" },
-    { label: "Email send", value: "gmail" },
-    { label: "Gemini", value: "gemini" }
-]
-
-const credentialFields: Record<string, { label: string; name: string; type: string; placeholder: string, title: string }[]> = {
-    telegram: [
-        {
-            label: "Telegram Bot Token",
-            name: "telegramToken",
-            type: "text",
-            placeholder: "Enter your Telegram Bot Token",
-            title: "Telegram Bot Token"
-        },
-    ],
-    gmail: [],
-    gemini: [
-        {
-            label: "AI",
-            name: "apiKey",
-            type: "text",
-            placeholder: "sk-...",
-            title: "Gemini API Key"
-        }
-    ]
-}
-
-interface StoredCredential {
-    id: string;
-    title: string;
-    platform: string;
-    data: Record<string, any>;
-    created_at: string;
-    updated_at: string;
-}
+import { credentialOptions, credentialFields } from '@/lib/constants/credentials';
+import { fetchStoredCredentials, saveCredentials, deleteCredential } from '@/lib/api/credential';
+import { initiateGmailOAuth } from '@/lib/api/helpers';
+import { StoredCredential } from "@/types/workflows.interface";
 
 export default function CredentialsPage() {
     const { token } = useAuth();
-    const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
     const [selectedType, setSelectedType] = useState("")
     const [formValues, setFormValues] = useState<Record<string, string>>({})
     const [isOAuthLoading, setIsOAuthLoading] = useState(false)
@@ -53,22 +18,18 @@ export default function CredentialsPage() {
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
-    // Fetch stored credentials
     useEffect(() => {
-        const fetchCredentials = async () => {
+        const loadCredentials = async () => {
             if (!token) return;
             try {
-                const response = await axios.get(
-                    `${process.env.NEXT_PUBLIC_BE_BASE_URL}/creds`,
-                    { headers: authHeaders }
-                );
-                setCredentials(response.data);
+                const creds = await fetchStoredCredentials(token);
+                setCredentials(creds);
             } catch (error) {
                 console.error('Error fetching credentials:', error);
                 toast.error('Failed to load credentials');
             }
         };
-        fetchCredentials();
+        loadCredentials();
     }, [token, isOAuthLoading]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,13 +37,11 @@ export default function CredentialsPage() {
     }
 
     const handleGmailOAuth = async () => {
+        if (!token) return;
         try {
             setIsOAuthLoading(true);
-            const response = await axios.get(
-                `${process.env.NEXT_PUBLIC_BE_BASE_URL}/oauth/gmail/authorize`,
-                { headers: authHeaders }
-            );
-            window.location.href = response.data.auth_url;
+            const authUrl = await initiateGmailOAuth(token);
+            window.location.href = authUrl;
         } catch (error) {
             console.error('OAuth initiation error:', error);
             toast.error('Failed to initiate Gmail OAuth');
@@ -92,31 +51,24 @@ export default function CredentialsPage() {
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault()
+        if (!token) return;
+
         if (selectedType === 'gmail') {
             await handleGmailOAuth();
             return;
         }
+
         try {
-            const response = await axios.post(`${process.env.NEXT_PUBLIC_BE_BASE_URL}/creds/save`, {
-                title: credentialFields[selectedType]?.[0]?.title || "My Credential",
-                platform: selectedType,
-                data: formValues
-            }, {
-                headers: {
-                    "Content-Type": "application/json",
-                    ...authHeaders
-                }
-            })
+            const title = credentialFields[selectedType]?.[0]?.title || "My Credential";
+            await saveCredentials(selectedType, formValues, title, token);
+
             toast.success('Credentials saved successfully!');
             setSelectedType("");
             setFormValues({});
             setIsOAuthLoading(false);
-            // Refetch credentials
-            const creds = await axios.get(
-                `${process.env.NEXT_PUBLIC_BE_BASE_URL}/creds`,
-                { headers: authHeaders }
-            );
-            setCredentials(creds.data);
+
+            const creds = await fetchStoredCredentials(token);
+            setCredentials(creds);
         } catch (error) {
             console.error('Error saving credentials:', error);
             toast.error('Failed to save credentials');
@@ -125,15 +77,12 @@ export default function CredentialsPage() {
     }
 
     const handleDeleteCredential = async (id: string, title: string) => {
+        if (!token) return;
+
         try {
             setDeletingId(id);
-            
-            await axios.delete(
-                `${process.env.NEXT_PUBLIC_BE_BASE_URL}/creds/${id}`,
-                { headers: authHeaders }
-            );
+            await deleteCredential(id, token);
 
-            // Remove credential from local state
             setCredentials(prev => prev.filter(cred => cred.id !== id));
             toast.success(`Credential "${title}" deleted successfully`);
             setShowDeleteConfirm(null);
@@ -244,7 +193,6 @@ export default function CredentialsPage() {
                         </form>
                     </div>
 
-                    {/* Stored Credentials List */}
                     <div className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-2xl shadow-xl p-8">
                         <h2 className="text-2xl font-bold mb-6 text-foreground text-center">Stored Credentials</h2>
                         {credentials.length === 0 ? (
@@ -262,7 +210,7 @@ export default function CredentialsPage() {
                                                 {cred.platform}
                                             </span>
                                         </div>
-                                        
+
                                         <div className="flex items-center space-x-2">
                                             {showDeleteConfirm === cred.id ? (
                                                 <div className="flex items-center space-x-2">
@@ -320,7 +268,6 @@ export default function CredentialsPage() {
                     </div>
                 </div>
 
-                {/* Delete Confirmation Modal */}
                 {showDeleteConfirm && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                         <div className="bg-white rounded-lg p-6 shadow-xl max-w-md w-full mx-4">
@@ -330,9 +277,9 @@ export default function CredentialsPage() {
                                 </svg>
                                 <h3 className="text-lg font-bold text-gray-900">Delete Credential</h3>
                             </div>
-                            
+
                             <p className="text-sm text-gray-600 mb-6">
-                                Are you sure you want to delete "{credentials.find(c => c.id === showDeleteConfirm)?.title}"? 
+                                Are you sure you want to delete "{credentials.find(c => c.id === showDeleteConfirm)?.title}"?
                                 This action cannot be undone and will remove access to this service.
                             </p>
 
