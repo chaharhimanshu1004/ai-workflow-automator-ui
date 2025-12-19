@@ -30,6 +30,26 @@ export const CustomNode = ({ data, id }: CustomNodeProps) => {
                 <Handle type="source" position={Position.Bottom} />
             </div>
 
+            {nodeData.isTrigger && nodeData.onRun && (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        nodeData.onRun(e);
+                    }}
+                    disabled={nodeData.isExecuting}
+                    className="absolute -top-2 -left-2 w-4 h-4 bg-green-500 text-white rounded-full flex items-center justify-center text-[10px] hover:bg-green-600 transition shadow-sm disabled:opacity-50"
+                    title="Run Workflow"
+                >
+                    {nodeData.isExecuting ? (
+                        <div className="animate-spin rounded-full h-2 w-2 border-b-2 border-white"></div>
+                    ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-2.5 h-2.5">
+                            <path fillRule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z" clipRule="evenodd" />
+                        </svg>
+                    )}
+                </button>
+            )}
+
             <button
                 onClick={(e) => {
                     e.stopPropagation();

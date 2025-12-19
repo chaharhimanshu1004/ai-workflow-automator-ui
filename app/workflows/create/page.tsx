@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { ReactFlow, Background } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useAuth } from '@/lib/hooks/useAuth';
 import toast from 'react-hot-toast';
 import { ActionsI } from '@/types/workflows.interface';
-import { fetchActionTypes, fetchTriggerTypes } from '@/lib/api/workflow';
+import { fetchActionTypes, fetchTriggerTypes, executeWorkflow } from '@/lib/api/workflow';
 import { createFormTrigger } from '@/lib/api/helpers';
 import { actionCredentialMapping } from '@/lib/constants/credentials';
 import { CustomNode, AddTriggerNode, TriggerSelectorModal, CredentialFormModal, ActionSelectorModal, FormUrlModal } from '@/components/workflow';
@@ -70,9 +70,10 @@ export default function CreateWorkflow() {
 
     const [pendingActionType, setPendingActionType] = useState<ActionsI | null>(null);
 
-    
+
     const [generatedFormUrl, setGeneratedFormUrl] = useState<string | null>(null);
     const [showFormUrlModal, setShowFormUrlModal] = useState(false);
+    const [isExecuting, setIsExecuting] = useState(false);
 
     useEffect(() => {
         const loadTypes = async () => {
@@ -167,6 +168,22 @@ export default function CreateWorkflow() {
         setPendingActionType(null);
     };
 
+
+    const handleExecuteWorkflow = async (e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
+        if (!workflowId || !token) return;
+        try {
+            setIsExecuting(true);
+            await executeWorkflow(workflowId, token);
+            toast.success('Workflow executed successfully');
+        } catch (error) {
+            console.error('Error executing workflow:', error);
+            toast.error('Failed to execute workflow');
+        } finally {
+            setIsExecuting(false);
+        }
+    };
+
     const handleAddTrigger = useCallback(() => {
         setShowTriggerSelector(true);
     }, []);
@@ -197,6 +214,7 @@ export default function CreateWorkflow() {
                         onAddNode: handleAddNode,
                         onDeleteNode: handleDeleteNode,
                         config: formData,
+                        isTrigger: true,
                     },
                 };
                 return [newNode];
@@ -229,6 +247,7 @@ export default function CreateWorkflow() {
                     color: triggerType.color,
                     onAddNode: handleAddNode,
                     onDeleteNode: handleDeleteNode,
+                    isTrigger: true,
                 },
             };
             return [newNode];
@@ -261,6 +280,25 @@ export default function CreateWorkflow() {
             handleAddTrigger();
         }
     }, [handleAddTrigger]);
+
+    const nodesWithHandlers = useMemo(() => {
+        return nodes.map((node) => {
+            const isTrigger = node.data.isTrigger || triggerTypes.some(t => t.id === node.data.type) || node.data.type === 'form-submission';
+
+            if (isTrigger) {
+                return {
+                    ...node,
+                    data: {
+                        ...node.data,
+                        isTrigger: true, // Ensure it's set for rendering
+                        onRun: handleExecuteWorkflow,
+                        isExecuting: isExecuting
+                    }
+                };
+            }
+            return node;
+        });
+    }, [nodes, isExecuting, triggerTypes]);
 
     if (isLoading || isLoadingTypes) {
         return (
@@ -321,8 +359,9 @@ export default function CreateWorkflow() {
                 }}
             />
 
+
             <ReactFlow
-                nodes={nodes}
+                nodes={nodesWithHandlers}
                 edges={edges}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}

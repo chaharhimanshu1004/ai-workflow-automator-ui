@@ -54,3 +54,12 @@ export async function updateWorkflow(id: string, workflowData: any, token: strin
         { headers: { Authorization: `Bearer ${token}` } }
     );
 }
+
+export async function executeWorkflow(id: string, token: string): Promise<any> {
+    const response = await axios.post(
+        `${config.BE_BASE_URL}/workflow/${id}/execute`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return response.data;
+}

@@ -39,7 +39,7 @@ export const credentialFields: Record<string, {
     telegram: [
         {
             label: "Telegram Bot Token",
-            name: "telegramToken",
+            name: "botToken",
             type: "text",
             placeholder: "Enter your Telegram Bot Token",
             title: "Telegram Bot Token"
