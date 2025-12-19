@@ -8,9 +8,9 @@ export const CustomNode = ({ data, id }: CustomNodeProps) => {
     const primaryConfigValue = primaryConfigKey ? nodeData.config[primaryConfigKey] : null;
 
     return (
-        <div className="relative group">
+        <div className="relative">
             <div
-                className="px-1 py-1 shadow-sm rounded border bg-white min-w-[60px]"
+                className="px-1 py-1 shadow-sm rounded border bg-white min-w-[60px] cursor-pointer group"
                 style={{ borderColor: nodeData.color }}
             >
                 <Handle type="target" position={Position.Top} />
@@ -28,6 +28,10 @@ export const CustomNode = ({ data, id }: CustomNodeProps) => {
                     </div>
                 </div>
                 <Handle type="source" position={Position.Bottom} />
+
+                <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                    Click to Edit
+                </div>
             </div>
 
             {nodeData.isTrigger && nodeData.onRun && (
@@ -63,7 +67,10 @@ export const CustomNode = ({ data, id }: CustomNodeProps) => {
 
             <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2">
                 <button
-                    onClick={() => nodeData.onAddNode && nodeData.onAddNode(id)}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        nodeData.onAddNode && nodeData.onAddNode(id);
+                    }}
                     className="w-3 h-3 bg-blue-500 text-white rounded-full flex items-center justify-center text-[8px] hover:bg-blue-600 transition shadow-sm"
                 >
                     +

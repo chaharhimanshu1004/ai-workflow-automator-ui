@@ -70,10 +70,10 @@ export default function CreateWorkflow() {
 
     const [pendingActionType, setPendingActionType] = useState<ActionsI | null>(null);
 
-
     const [generatedFormUrl, setGeneratedFormUrl] = useState<string | null>(null);
     const [showFormUrlModal, setShowFormUrlModal] = useState(false);
     const [isExecuting, setIsExecuting] = useState(false);
+    const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
 
     useEffect(() => {
         const loadTypes = async () => {
@@ -131,7 +131,26 @@ export default function CreateWorkflow() {
     const handleConfigSubmit = () => {
         if (!currentActionType) return;
 
-        addActionNode(currentActionType, configValues);
+        if (editingNodeId) {
+            setNodes((currentNodes) =>
+                currentNodes.map((node) => {
+                    if (node.id === editingNodeId) {
+                        return {
+                            ...node,
+                            data: {
+                                ...node.data,
+                                config: configValues
+                            }
+                        };
+                    }
+                    return node;
+                })
+            );
+            setEditingNodeId(null);
+        } else {
+            addActionNode(currentActionType, configValues);
+        }
+
         setShowConfigForm(false);
         setShowActionSelector(false);
         setCurrentActionType(null);
@@ -278,8 +297,18 @@ export default function CreateWorkflow() {
     const onNodeClick = useCallback((event: React.MouseEvent, node: any) => {
         if (node.type === 'addTrigger') {
             handleAddTrigger();
+        } else if (node.type === 'custom' && node.data?.type !== 'form-submission') {
+            // Edit existing node
+            const actionType = actionTypes.find(t => t.id === node.data.type);
+            if (actionType) {
+                setEditingNodeId(node.id);
+                setCurrentActionType(actionType);
+                setConfigValues(node.data.config || {});
+                setShowConfigForm(true);
+                setShowActionSelector(true);
+            }
         }
-    }, [handleAddTrigger]);
+    }, [handleAddTrigger, actionTypes]);
 
     const nodesWithHandlers = useMemo(() => {
         return nodes.map((node) => {
@@ -346,8 +375,15 @@ export default function CreateWorkflow() {
                 onBackToSelector={() => {
                     setShowConfigForm(false);
                     setCurrentActionType(null);
+                    setEditingNodeId(null);
                 }}
-                onClose={() => setShowActionSelector(false)}
+                onClose={() => {
+                    setShowActionSelector(false);
+                    setEditingNodeId(null);
+                    setCurrentActionType(null);
+                    setShowConfigForm(false);
+                }}
+                isEditing={!!editingNodeId}
             />
 
             <FormUrlModal
