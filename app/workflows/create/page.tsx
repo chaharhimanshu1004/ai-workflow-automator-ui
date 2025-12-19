@@ -329,6 +329,56 @@ export default function CreateWorkflow() {
         });
     }, [nodes, isExecuting, triggerTypes]);
 
+    const getUpstreamNodes = useCallback((targetNodeId: string) => {
+        const upstreamNodes: any[] = [];
+        const visited = new Set<string>();
+        const queue = [targetNodeId];
+
+        while (queue.length > 0) {
+            const currentId = queue.shift()!;
+            if (visited.has(currentId)) continue;
+            visited.add(currentId);
+
+            const incomingEdges = edges.filter(edge => edge.target === currentId);
+            for (const edge of incomingEdges) {
+                const parentNode = nodes.find(n => n.id === edge.source);
+                if (parentNode) {
+                    const isManual = parentNode.data.type === 'MANUAL' || parentNode.data.type === 'manual-trigger' || parentNode.data.label === 'Manual Trigger';
+
+                    if (!isManual && !upstreamNodes.find(n => n.id === parentNode.id)) {
+                        upstreamNodes.push({
+                            id: parentNode.id,
+                            label: parentNode.data.label
+                        });
+                    }
+                    queue.push(parentNode.id);
+                }
+            }
+        }
+        return upstreamNodes;
+    }, [nodes, edges]);
+
+    const availableVariables = useMemo(() => {
+        if (editingNodeId) {
+            return getUpstreamNodes(editingNodeId);
+        }
+        if (selectedParentId) {
+            const parentUpstreams = getUpstreamNodes(selectedParentId);
+            const parentNode = nodes.find(n => n.id === selectedParentId);
+            if (parentNode) {
+                const isManual = parentNode.data.type === 'MANUAL' || parentNode.data.type === 'manual-trigger' || parentNode.data.label === 'Manual Trigger';
+                if (!isManual) {
+                    parentUpstreams.unshift({
+                        id: parentNode.id,
+                        label: parentNode.data.label
+                    });
+                }
+            }
+            return parentUpstreams;
+        }
+        return [];
+    }, [editingNodeId, selectedParentId, getUpstreamNodes, nodes]);
+
     if (isLoading || isLoadingTypes) {
         return (
             <div className="flex items-center justify-center w-full h-screen">
@@ -384,6 +434,7 @@ export default function CreateWorkflow() {
                     setShowConfigForm(false);
                 }}
                 isEditing={!!editingNodeId}
+                upstreamNodes={availableVariables}
             />
 
             <FormUrlModal

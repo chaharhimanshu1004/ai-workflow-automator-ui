@@ -14,6 +14,7 @@ interface ActionSelectorModalProps {
     onBackToSelector: () => void;
     onClose: () => void;
     isEditing?: boolean;
+    upstreamNodes?: { id: string; label: string }[];
 }
 
 export function ActionSelectorModal({
@@ -28,13 +29,18 @@ export function ActionSelectorModal({
     onConfigSubmit,
     onBackToSelector,
     onClose,
-    isEditing = false
+    isEditing = false,
+    upstreamNodes = []
 }: ActionSelectorModalProps) {
     if (!isOpen) return null;
 
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text);
+    };
+
     return (
         <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20">
-            <div className="bg-white rounded-lg p-6 shadow-xl max-w-md w-full mx-4">
+            <div className="bg-white rounded-lg p-6 shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
                 {!showConfigForm ? (
                     <>
                         <h3 className="text-lg font-bold mb-4">Add Action</h3>
@@ -83,6 +89,27 @@ export function ActionSelectorModal({
                             )}
                             <h3 className="text-lg font-bold">Configure {currentActionType?.label}</h3>
                         </div>
+
+                        {upstreamNodes.length > 0 && (
+                            <div className="mb-6 p-3 bg-gray-50 rounded-md border border-gray-200">
+                                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Available Variables</h4>
+                                <div className="space-y-1">
+                                    {upstreamNodes.map(node => (
+                                        <div key={node.id} className="flex items-center justify-between text-sm group">
+                                            <span className="text-gray-700 font-medium truncate mr-2" title={node.label}>{node.label}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => copyToClipboard(`{{${node.id}.output}}`)}
+                                                className="text-xs text-blue-500 hover:text-blue-700 opacity-0 group-hover:opacity-100 transition-opacity bg-blue-50 px-2 py-0.5 rounded"
+                                            >
+                                                Copy
+                                            </button>
+                                            <code className="text-xs text-gray-500 block">{'{{'}{node.id}.output{'}}'}</code>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         <form onSubmit={(e) => {
                             e.preventDefault();
