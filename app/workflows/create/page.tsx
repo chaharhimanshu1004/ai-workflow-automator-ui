@@ -12,6 +12,7 @@ import { actionCredentialMapping } from '@/lib/constants/credentials';
 import { CustomNode, AddTriggerNode, TriggerSelectorModal, CredentialFormModal, ActionSelectorModal, FormUrlModal } from '@/components/workflow';
 import { useWorkflowState } from '@/lib/hooks/useWorkflowState';
 import { useCredentials } from '@/lib/hooks/useCredentials';
+import { OUTPUT_PROVIDER_NODES } from '@/lib/constants/workflowNodes';
 
 const nodeTypeComponents = {
     custom: CustomNode,
@@ -343,9 +344,9 @@ export default function CreateWorkflow() {
             for (const edge of incomingEdges) {
                 const parentNode = nodes.find(n => n.id === edge.source);
                 if (parentNode) {
-                    const isManual = parentNode.data.type === 'MANUAL' || parentNode.data.type === 'manual-trigger' || parentNode.data.label === 'Manual Trigger';
+                    const isWhitelisted = OUTPUT_PROVIDER_NODES.includes(parentNode.data.type as string);
 
-                    if (!isManual && !upstreamNodes.find(n => n.id === parentNode.id)) {
+                    if (isWhitelisted && !upstreamNodes.find(n => n.id === parentNode.id)) {
                         upstreamNodes.push({
                             id: parentNode.id,
                             label: parentNode.data.label
@@ -366,8 +367,8 @@ export default function CreateWorkflow() {
             const parentUpstreams = getUpstreamNodes(selectedParentId);
             const parentNode = nodes.find(n => n.id === selectedParentId);
             if (parentNode) {
-                const isManual = parentNode.data.type === 'MANUAL' || parentNode.data.type === 'manual-trigger' || parentNode.data.label === 'Manual Trigger';
-                if (!isManual) {
+                const isWhitelisted = OUTPUT_PROVIDER_NODES.includes(parentNode.data.type as string);
+                if (isWhitelisted) {
                     parentUpstreams.unshift({
                         id: parentNode.id,
                         label: parentNode.data.label
