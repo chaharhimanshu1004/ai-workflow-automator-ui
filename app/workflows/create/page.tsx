@@ -7,9 +7,8 @@ import { useAuth } from '@/lib/hooks/useAuth';
 import toast from 'react-hot-toast';
 import { ActionsI } from '@/types/workflows.interface';
 import { fetchActionTypes, fetchTriggerTypes, executeWorkflow } from '@/lib/api/workflow';
-import { createFormTrigger } from '@/lib/api/helpers';
 import { actionCredentialMapping } from '@/lib/constants/credentials';
-import { CustomNode, AddTriggerNode, TriggerSelectorModal, CredentialFormModal, ActionSelectorModal, FormUrlModal } from '@/components/workflow';
+import { CustomNode, AddTriggerNode, TriggerSelectorModal, CredentialFormModal, ActionSelectorModal } from '@/components/workflow';
 import { useWorkflowState } from '@/lib/hooks/useWorkflowState';
 import { useCredentials } from '@/lib/hooks/useCredentials';
 import { OUTPUT_PROVIDER_NODES } from '@/lib/constants/workflowNodes';
@@ -70,9 +69,7 @@ export default function CreateWorkflow() {
     const [actionTypes, setActionTypes] = useState<ActionsI[]>([]);
 
     const [pendingActionType, setPendingActionType] = useState<ActionsI | null>(null);
-
-    const [generatedFormUrl, setGeneratedFormUrl] = useState<string | null>(null);
-    const [showFormUrlModal, setShowFormUrlModal] = useState(false);
+    
     const [isExecuting, setIsExecuting] = useState(false);
     const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
 
@@ -208,53 +205,7 @@ export default function CreateWorkflow() {
         setShowTriggerSelector(true);
     }, []);
 
-    const handleCreateFormTrigger = async () => {
-        if (!token) return;
-        try {
-            const { formId, webhookUrl } = await createFormTrigger(workflowId, token);
-            const formUrl = `${window.location.origin}/forms/${formId}`;
-            setGeneratedFormUrl(formUrl);
-            setShowFormUrlModal(true);
-
-            const formData = {
-                formId,
-                webhookUrl,
-                formUrl
-            };
-
-            setNodes((currentNodes) => {
-                const newNode = {
-                    id: `node-${nodeId}`,
-                    type: 'custom' as const,
-                    position: { x: 400, y: 300 },
-                    data: {
-                        label: 'Form Submission',
-                        type: 'form-submission',
-                        color: '#3B82F6',
-                        onAddNode: handleAddNode,
-                        onDeleteNode: handleDeleteNode,
-                        config: formData,
-                        isTrigger: true,
-                    },
-                };
-                return [newNode];
-            });
-
-            setShowTriggerSelector(false);
-            toast.success('Form trigger created successfully!');
-
-        } catch (error) {
-            console.error('Error creating form trigger:', error);
-            toast.error('Failed to create form trigger');
-            setShowTriggerSelector(false);
-        }
-    };
-
     const addTriggerNode = (triggerType: ActionsI) => {
-        if (triggerType.id === 'form-submission') {
-            handleCreateFormTrigger();
-            return;
-        }
 
         setNodes((currentNodes) => {
             const newNode = {
@@ -298,8 +249,7 @@ export default function CreateWorkflow() {
     const onNodeClick = useCallback((event: React.MouseEvent, node: any) => {
         if (node.type === 'addTrigger') {
             handleAddTrigger();
-        } else if (node.type === 'custom' && node.data?.type !== 'form-submission') {
-            // Edit existing node
+        } else if (node.type === 'custom') {
             const actionType = actionTypes.find(t => t.id === node.data.type);
             if (actionType) {
                 setEditingNodeId(node.id);
@@ -313,7 +263,7 @@ export default function CreateWorkflow() {
 
     const nodesWithHandlers = useMemo(() => {
         return nodes.map((node) => {
-            const isTrigger = node.data.isTrigger || triggerTypes.some(t => t.id === node.data.type) || node.data.type === 'form-submission';
+            const isTrigger = node.data.isTrigger || triggerTypes.some(t => t.id === node.data.type);
 
             if (isTrigger) {
                 return {
@@ -437,16 +387,6 @@ export default function CreateWorkflow() {
                 isEditing={!!editingNodeId}
                 upstreamNodes={availableVariables}
             />
-
-            <FormUrlModal
-                isOpen={showFormUrlModal}
-                formUrl={generatedFormUrl}
-                onClose={() => {
-                    setShowFormUrlModal(false);
-                    setGeneratedFormUrl(null);
-                }}
-            />
-
 
             <ReactFlow
                 nodes={nodesWithHandlers}

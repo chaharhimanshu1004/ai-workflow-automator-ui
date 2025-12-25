@@ -7,15 +7,3 @@ export async function initiateGmailOAuth(token: string): Promise<string> {
     });
     return response.data.auth_url;
 }
-
-export async function createFormTrigger(workflowId: string | null, token: string): Promise<{ formId: string; webhookUrl: string }> {
-    const response = await axios.post(
-        `${config.BE_BASE_URL}/create-form-trigger`,
-        {
-            workflowId: workflowId,
-            triggerType: 'form-submission'
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-    );
-    return response.data;
-}

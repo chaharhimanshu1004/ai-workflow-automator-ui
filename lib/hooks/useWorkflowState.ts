@@ -4,7 +4,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { ActionsI } from '@/types/workflows.interface';
 import { createWorkflow, fetchWorkflowById, updateWorkflow } from '@/lib/api/workflow';
-import { createFormTrigger } from '@/lib/api/helpers';
 
 export function useWorkflowState(token: string | null, onAddNodeCallback?: (nodeId: string) => void, onDeleteNodeCallback?: (nodeId: string) => void) {
     const [nodes, setNodes] = useState<Node[]>([
