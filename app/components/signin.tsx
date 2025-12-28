@@ -28,57 +28,142 @@ export default function SignIn() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-black via-red-950/10 to-gray-950 flex items-center justify-center p-4">
-            <Card className="w-full max-w-xl bg-card/95 border-black shadow-md rounded-2xl backdrop-blur-md border-[2px]">
-                <CardHeader className="space-y-4 text-center p-8">
-                    <div className="flex items-center justify-center gap-8 mb-2">
-                        <div className="p-3 bg-gradient-to-br from-black via-gray-800 to-gray-950 rounded-2xl shadow-lg">
+        <div className="min-h-screen w-full bg-zinc-950 flex">
+            <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-zinc-900 to-zinc-950 items-center justify-center p-12">
+                <div className="max-w-md space-y-8">
+                    <div className="space-y-4">
+                        <div className="w-20 h-20 rounded-2xl bg-emerald-600 flex items-center justify-center shadow-2xl shadow-emerald-600/20">
                             <svg
-                                className="w-10 h-10 text-white"
-                                fill="currentColor"
+                                className="w-11 h-11 text-white"
+                                fill="none"
+                                stroke="currentColor"
                                 viewBox="0 0 24 24"
+                                strokeWidth={2.5}
                             >
-                                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                             </svg>
                         </div>
-                        <div className="text-left">
-                            <div className="text-4xl font-black text-foreground tracking-tight leading-none">
-                                AI Workflow
+                        <h1 className="text-5xl font-bold text-white leading-tight">
+                            AI Workflow<br />Automator
+                        </h1>
+                        <p className="text-xl text-zinc-400 leading-relaxed">
+                            Streamline your workflows with intelligent automation. Build, connect, and deploy in minutes.
+                        </p>
+                    </div>
+
+                    <div className="space-y-4 pt-8">
+                        <div className="flex items-start space-x-3">
+                            <div className="w-6 h-6 rounded-full bg-emerald-600/20 flex items-center justify-center mt-0.5">
+                                <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
                             </div>
-                            <div className="text-4xl font-black text-foreground tracking-tight leading-none">
-                                Automator
+                            <div>
+                                <h3 className="text-white font-semibold">Visual Workflow Builder</h3>
+                                <p className="text-sm text-zinc-500">Drag and drop interface for easy automation</p>
                             </div>
+                        </div>
+                        <div className="flex items-start space-x-3">
+                            <div className="w-6 h-6 rounded-full bg-emerald-600/20 flex items-center justify-center mt-0.5">
+                                <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 className="text-white font-semibold">Smart Integrations</h3>
+                                <p className="text-sm text-zinc-500">Connect with your favorite tools seamlessly</p>
+                            </div>
+                        </div>
+                        <div className="flex items-start space-x-3">
+                            <div className="w-6 h-6 rounded-full bg-emerald-600/20 flex items-center justify-center mt-0.5">
+                                <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 className="text-white font-semibold">AI-Powered</h3>
+                                <p className="text-sm text-zinc-500">Integrate AI Models</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-12">
+                <div className="w-full max-w-md space-y-8">
+                    <div className="lg:hidden flex justify-center mb-8">
+                        <div className="w-16 h-16 rounded-2xl bg-emerald-600 flex items-center justify-center shadow-xl">
+                            <svg
+                                className="w-9 h-9 text-white"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                strokeWidth={2.5}
+                            >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
                         </div>
                     </div>
 
-                    <CardDescription className="text-muted-foreground text-pretty text-xl font-medium">
-                        Sign in to automate your workflows with AI
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6 p-8 pt-0 flex flex-col items-center">
-                    <div className="w-full flex flex-col items-center gap-4">
-                        <div className="w-full flex items-center">
-                            <hr className="flex-grow border-t border-muted-foreground/30" />
-                            <span className="mx-4 text-muted-foreground text-sm font-semibold">Sign in with</span>
-                            <hr className="flex-grow border-t border-muted-foreground/30" />
-                        </div>
-                        <div className="w-full flex justify-center">
-                            <div className="w-full max-w-xs">
-                                <div className="bg-gradient-to-br from-black via-gray-900 to-gray-950 rounded-xl shadow-lg p-1 transition hover:scale-[1.03]">
-                                    <GoogleLogin
-                                        onSuccess={handleGoogleSuccess}
-                                        onError={handleGoogleError}
-                                        width="100%"
-                                        theme="filled_black"
-                                        shape="pill"
-                                        text="continue_with"
-                                    />
-                                </div>
+                    <Card className="border border-zinc-800 bg-zinc-900/50 backdrop-blur shadow-xl">
+                        <CardHeader className="space-y-4 pt-10 pb-8 px-8">
+                            <div className="space-y-2">
+                                <CardTitle className="text-3xl font-bold text-white">
+                                    Sign in to your account
+                                </CardTitle>
+                                <CardDescription className="text-zinc-400 text-base">
+                                    Good to see you again! Log in to your account.
+                                </CardDescription>
                             </div>
-                        </div>
+                        </CardHeader>
+
+                        <CardContent className="px-8 pb-8">
+                            <div className="space-y-6">
+                                <div className="relative group">
+                                    <div className="absolute -inset-0.5 bg-emerald-600/20 rounded-lg opacity-0 group-hover:opacity-100 transition duration-300"></div>
+                                    <div className="relative bg-zinc-800 hover:bg-zinc-800/80 rounded-lg p-1.5 transition-colors">
+                                        <GoogleLogin
+                                            onSuccess={handleGoogleSuccess}
+                                            onError={handleGoogleError}
+                                            width="100%"
+                                            theme="filled_black"
+                                            shape="rectangular"
+                                            text="continue_with"
+                                            size="large"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="relative">
+                                    <div className="absolute inset-0 flex items-center">
+                                        <div className="w-full border-t border-zinc-800"></div>
+                                    </div>
+                                    <div className="relative flex justify-center text-sm">
+                                        <span className="px-3 bg-zinc-900/50 text-zinc-500">
+                                            Secure sign-in
+                                        </span>
+                                    </div>
+                                </div>
+                                <p className="text-center text-xs text-zinc-500 leading-relaxed">
+                                    By signing in, you agree to our{" "}
+                                    <span className="text-emerald-500 hover:text-emerald-400 cursor-pointer transition-colors">
+                                        Terms of Service
+                                    </span>{" "}
+                                    and{" "}
+                                    <span className="text-emerald-500 hover:text-emerald-400 cursor-pointer transition-colors">
+                                        Privacy Policy
+                                    </span>
+                                </p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <div className="text-center">
+                        <p className="text-xs text-zinc-600">
+                            © 2025 AI Workflow Automator. All rights reserved.
+                        </p>
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+            </div>
         </div>
     )
 }
