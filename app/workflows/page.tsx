@@ -6,13 +6,15 @@ import { useAuth } from '@/lib/hooks/useAuth';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { WorkflowI } from '@/types/workflows.interface';
-import { fetchWorkflows, deleteWorkflow } from '@/lib/api/workflow';
+import { fetchWorkflows, deleteWorkflow, editWorkflowName } from '@/lib/api/workflow';
 
 export default function WorkflowsPage() {
     const [workflows, setWorkflows] = useState<WorkflowI[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editName, setEditName] = useState<string>('');
     const router = useRouter();
     const { token } = useAuth();
 
@@ -66,6 +68,36 @@ export default function WorkflowsPage() {
     const cancelDelete = (e: React.MouseEvent) => {
         e.stopPropagation();
         setShowDeleteConfirm(null);
+    };
+
+    const handleStartEdit = (e: React.MouseEvent, workflow: WorkflowI) => {
+        e.stopPropagation();
+        setEditingId(workflow.id);
+        setEditName(workflow.title);
+    };
+
+    const handleCancelEdit = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setEditingId(null);
+        setEditName('');
+    };
+
+    const handleSaveEdit = async (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        if (!editName.trim() || !token) return;
+
+        try {
+            await editWorkflowName(id, editName, token);
+
+            setWorkflows(prev => prev.map(w =>
+                w.id === id ? { ...w, title: editName } : w
+            ));
+            toast.success('Workflow updated successfully');
+            setEditingId(null);
+        } catch (error) {
+            console.error('Error updating workflow:', error);
+            toast.error('Failed to update workflow');
+        }
     };
 
     if (isLoading) {
@@ -145,14 +177,58 @@ export default function WorkflowsPage() {
                                             className="hover:bg-zinc-800/30 cursor-pointer transition-colors group"
                                         >
                                             <td className="px-6 py-5">
-                                                <div className="flex items-center space-x-3">
-                                                    <div className="w-10 h-10 rounded-lg bg-emerald-600/10 flex items-center justify-center group-hover:bg-emerald-600/20 transition-colors">
-                                                        <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                                        </svg>
+                                                {editingId === workflow.id ? (
+                                                    <div className="flex items-center space-x-2" onClick={e => e.stopPropagation()}>
+                                                        <input
+                                                            type="text"
+                                                            value={editName}
+                                                            onChange={(e) => setEditName(e.target.value)}
+                                                            className="bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-white text-sm font-bold focus:outline-none focus:border-emerald-500 w-full min-w-[250px]"
+                                                            autoFocus
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') handleSaveEdit(e as any, workflow.id);
+                                                                if (e.key === 'Escape') handleCancelEdit(e as any);
+                                                            }}
+                                                            onClick={e => e.stopPropagation()}
+                                                        />
+                                                        <button
+                                                            onClick={(e) => handleSaveEdit(e, workflow.id)}
+                                                            className="p-1 text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded transition-colors"
+                                                            title="Save"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                            </svg>
+                                                        </button>
+                                                        <button
+                                                            onClick={handleCancelEdit}
+                                                            className="p-1 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                                                            title="Cancel"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                                            </svg>
+                                                        </button>
                                                     </div>
-                                                    <span className="font-semibold text-white">{workflow.title}</span>
-                                                </div>
+                                                ) : (
+                                                    <div className="flex items-center space-x-3 group/title">
+                                                        <div className="w-10 h-10 rounded-lg bg-emerald-600/10 flex items-center justify-center group-hover:bg-emerald-600/20 transition-colors">
+                                                            <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                            </svg>
+                                                        </div>
+                                                        <span className="font-semibold text-white">{workflow.title}</span>
+                                                        <button
+                                                            onClick={(e) => handleStartEdit(e, workflow)}
+                                                            className="p-1 text-zinc-500 hover:text-emerald-500 transition-all"
+                                                            title="Rename workflow"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </td>
                                             <td className="px-6 py-5">
                                                 <div className="flex justify-center">

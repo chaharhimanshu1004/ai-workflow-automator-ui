@@ -19,6 +19,8 @@ export function useWorkflowState(token: string | null, onAddNodeCallback?: (node
     const [workflowId, setWorkflowId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(false);
 
+    const [workflowTitle, setWorkflowTitle] = useState<string>("New Workflow");
+
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -40,6 +42,10 @@ export function useWorkflowState(token: string | null, onAddNodeCallback?: (node
         try {
             setIsLoading(true);
             const workflow = await fetchWorkflowById(id, token);
+
+            if (workflow.title) {
+                setWorkflowTitle(workflow.title);
+            }
 
             if (!workflow.nodes || Object.keys(workflow.nodes).length === 0) {
                 setNodes([{
@@ -127,7 +133,7 @@ export function useWorkflowState(token: string | null, onAddNodeCallback?: (node
         }, {});
 
         return {
-            title: "New Workflow",
+            title: workflowTitle,
             enabled: true,
             nodes: nodesObject,
             connections: connectionsObject

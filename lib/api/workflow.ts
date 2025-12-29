@@ -63,3 +63,11 @@ export async function executeWorkflow(id: string, token: string): Promise<any> {
     );
     return response.data;
 }
+
+export async function editWorkflowName(id: string, title: string, token: string): Promise<void> {
+    await axios.patch(
+        `${config.BE_BASE_URL}/workflow/${id}`,
+        { title },
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+}
