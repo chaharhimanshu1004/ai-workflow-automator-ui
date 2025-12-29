@@ -270,7 +270,7 @@ export default function CreateWorkflow() {
                     ...node,
                     data: {
                         ...node.data,
-                        isTrigger: true, // Ensure it's set for rendering
+                        isTrigger: true,
                         onRun: handleExecuteWorkflow,
                         isExecuting: isExecuting
                     }
@@ -332,17 +332,17 @@ export default function CreateWorkflow() {
 
     if (isLoading || isLoadingTypes) {
         return (
-            <div className="flex items-center justify-center w-full h-screen">
+            <div className="flex items-center justify-center w-full h-screen bg-zinc-950">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">Loading workflow...</p>
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500 mx-auto"></div>
+                    <p className="mt-4 text-zinc-400">Loading workflow...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="relative w-full h-screen">
+        <div className="relative w-full h-screen bg-zinc-950">
             <TriggerSelectorModal
                 isOpen={showTriggerSelector}
                 triggerTypes={triggerTypes}
@@ -397,9 +397,9 @@ export default function CreateWorkflow() {
                 onNodeClick={onNodeClick}
                 nodeTypes={nodeTypeComponents}
                 fitView
-                className="bg-gray-50"
+                className="bg-zinc-950"
             >
-                <Background color="#aaa" gap={16} />
+                <Background color="#27272a" gap={16} size={1} />
             </ReactFlow>
         </div>
     );
