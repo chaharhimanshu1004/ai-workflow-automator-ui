@@ -68,18 +68,7 @@ export const CustomNode = ({ data, id }: CustomNodeProps) => {
                 </div>
             )}
 
-            <button
-                onClick={(e) => {
-                    e.stopPropagation();
-                    nodeData.onDeleteNode && nodeData.onDeleteNode(id);
-                }}
-                className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center transition-all shadow-sm shadow-red-600/30 border border-zinc-900"
-                title="Delete node"
-            >
-                <svg className="w-1.5 h-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
+
 
             <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2">
                 <button

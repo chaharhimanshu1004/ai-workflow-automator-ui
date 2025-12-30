@@ -26,10 +26,6 @@ export default function CreateWorkflow() {
         setShowActionSelector(true);
     }, []);
 
-    const handleDeleteNode = useCallback(async (nodeId: string) => {
-        await deleteNode(nodeId);
-    }, []);
-
     const {
         nodes,
         edges,
@@ -42,8 +38,7 @@ export default function CreateWorkflow() {
         onConnect,
         addTriggerNode: addTriggerNodeFromHook,
         addActionNode: addActionNodeFromHook,
-        deleteNode,
-    } = useWorkflowState(token, handleAddNode, handleDeleteNode);
+    } = useWorkflowState(token, handleAddNode);
 
     const {
         storedCredentials,
@@ -69,7 +64,7 @@ export default function CreateWorkflow() {
     const [actionTypes, setActionTypes] = useState<ActionsI[]>([]);
 
     const [pendingActionType, setPendingActionType] = useState<ActionsI | null>(null);
-    
+
     const [isExecuting, setIsExecuting] = useState(false);
     const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
 
@@ -217,7 +212,6 @@ export default function CreateWorkflow() {
                     type: triggerType.id,
                     color: triggerType.color,
                     onAddNode: handleAddNode,
-                    onDeleteNode: handleDeleteNode,
                     isTrigger: true,
                 },
             };
@@ -238,7 +232,6 @@ export default function CreateWorkflow() {
                 data: {
                     ...node.data,
                     onAddNode: handleAddNode,
-                    onDeleteNode: handleDeleteNode,
                 }
             }))
         );

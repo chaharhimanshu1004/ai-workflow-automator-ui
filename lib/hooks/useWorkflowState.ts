@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { ActionsI } from '@/types/workflows.interface';
 import { createWorkflow, fetchWorkflowById, updateWorkflow } from '@/lib/api/workflow';
 
-export function useWorkflowState(token: string | null, onAddNodeCallback?: (nodeId: string) => void, onDeleteNodeCallback?: (nodeId: string) => void) {
+export function useWorkflowState(token: string | null, onAddNodeCallback?: (nodeId: string) => void) {
     const [nodes, setNodes] = useState<Node[]>([
         {
             id: 'add-trigger',
@@ -66,8 +66,7 @@ export function useWorkflowState(token: string | null, onAddNodeCallback?: (node
                     position: nodeData.position,
                     data: {
                         ...nodeData.data,
-                        onAddNode: onAddNodeCallback,
-                        onDeleteNode: onDeleteNodeCallback
+                        onAddNode: onAddNodeCallback
                     }
                 };
             });
@@ -107,7 +106,7 @@ export function useWorkflowState(token: string | null, onAddNodeCallback?: (node
 
         const nodesObject = currentNodes.reduce<Record<string, any>>((acc, node) => {
             if (node.id && node.position && node.data && node.type) {
-                const { onAddNode, onDeleteNode, ...nodeData } = node.data;
+                const { onAddNode, ...nodeData } = node.data;
                 acc[node.id] = {
                     position: node.position,
                     data: {
@@ -241,86 +240,7 @@ export function useWorkflowState(token: string | null, onAddNodeCallback?: (node
         setNodeId((id) => id + 1);
     };
 
-    const deleteNode = async (nodeId: string) => {
-        if (nodeId === 'add-trigger' || !token) return;
 
-        try {
-            const nodeToDelete = nodes.find(n => n.id === nodeId);
-            if (!nodeToDelete) return;
-
-            let updatedNodes: Node[];
-            let updatedEdges: Edge[];
-
-            const workflowNodes = nodes.filter(n => n.type !== 'addTrigger');
-            if (workflowNodes.length === 1 && workflowNodes[0].id === nodeId) {
-                updatedNodes = [{
-                    id: 'add-trigger',
-                    type: 'addTrigger',
-                    position: { x: 400, y: 300 },
-                    data: { label: 'Add Trigger' },
-                }];
-            } else {
-                updatedNodes = nodes.filter(n => n.id !== nodeId);
-            }
-
-            updatedEdges = edges.filter(edge =>
-                edge.source !== nodeId && edge.target !== nodeId
-            );
-
-            setNodes(updatedNodes);
-            setEdges(updatedEdges);
-
-            if (workflowId) {
-                try {
-                    const currentNodes = updatedNodes.filter(node => node.type !== 'addTrigger');
-                    const nodesObject = currentNodes.reduce<Record<string, any>>((acc, node) => {
-                        if (node.id && node.position && node.data && node.type) {
-                            const { onAddNode, onDeleteNode, ...nodeData } = node.data;
-                            acc[node.id] = {
-                                position: node.position,
-                                data: {
-                                    label: nodeData.label as string,
-                                    type: nodeData.type as string,
-                                    color: nodeData.color as string,
-                                    config: nodeData.config as Record<string, any> || {}
-                                },
-                                type: node.type
-                            };
-                        }
-                        return acc;
-                    }, {});
-
-                    const connectionsObject = updatedEdges.reduce<Record<string, any>>((acc, edge) => {
-                        if (edge.id && edge.source && edge.target) {
-                            acc[edge.id] = {
-                                source: edge.source,
-                                target: edge.target
-                            };
-                        }
-                        return acc;
-                    }, {});
-
-                    const workflowData = {
-                        title: "New Workflow",
-                        enabled: true,
-                        nodes: nodesObject,
-                        connections: connectionsObject
-                    };
-
-                    await updateWorkflow(workflowId, workflowData, token);
-                    toast.success('Node deleted successfully');
-                } catch (error) {
-                    console.error('Error saving workflow after deletion:', error);
-                    toast.error('Node deleted but failed to save to server.');
-                }
-            } else {
-                toast.success('Node deleted successfully');
-            }
-        } catch (error) {
-            console.error('Error deleting node:', error);
-            toast.error('Failed to delete node');
-        }
-    };
 
     useEffect(() => {
         const id = searchParams.get('id');
@@ -353,7 +273,7 @@ export function useWorkflowState(token: string | null, onAddNodeCallback?: (node
         onConnect,
         addTriggerNode,
         addActionNode,
-        deleteNode,
+
         saveWorkflow
     };
 }
