@@ -3,6 +3,8 @@ import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
 
+    console.log(`[Middleware] ${request.method} ${request.nextUrl.pathname}`)
+
     if (request.nextUrl.pathname === '/') {
         const token = request.cookies.get('accessToken')?.value
 
