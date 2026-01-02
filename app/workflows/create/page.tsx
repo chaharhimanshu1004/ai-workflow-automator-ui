@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, Suspense } from 'react';
 import { ReactFlow, Background } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useAuth } from '@/lib/hooks/useAuth';
@@ -18,7 +18,7 @@ const nodeTypeComponents = {
     addTrigger: AddTriggerNode,
 };
 
-export default function CreateWorkflow() {
+function CreateWorkflowContent() {
     const { token } = useAuth();
 
     const handleAddNode = useCallback((parentId: string) => {
@@ -395,5 +395,20 @@ export default function CreateWorkflow() {
                 <Background color="#27272a" gap={16} size={1} />
             </ReactFlow>
         </div>
+    );
+}
+
+export default function CreateWorkflow() {
+    return (
+        <Suspense fallback={
+            <div className="flex items-center justify-center w-full h-screen bg-zinc-950">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500 mx-auto"></div>
+                    <p className="mt-4 text-zinc-400">Loading...</p>
+                </div>
+            </div>
+        }>
+            <CreateWorkflowContent />
+        </Suspense>
     );
 }
