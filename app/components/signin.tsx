@@ -4,6 +4,7 @@ import { GoogleLogin } from "@react-oauth/google"
 import axios from "axios"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/hooks/useAuth"
+import config from "@/config"
 
 export default function SignIn() {
 
@@ -12,7 +13,7 @@ export default function SignIn() {
 
     const handleGoogleSuccess = async (creds: any) => {
         try {
-            const response = await axios.post(`${process.env.NEXT_PUBLIC_BE_BASE_URL}/user/auth/google`,
+            const response = await axios.post(`${config.BE_BASE_URL}/user/auth/google`,
                 { token: creds.credential },
                 { headers: { "Content-Type": "application/json" } }
             )
@@ -121,11 +122,11 @@ export default function SignIn() {
                             <div className="space-y-6">
                                 <div className="relative group">
                                     <div className="absolute -inset-0.5 bg-emerald-600/20 rounded-lg opacity-0 group-hover:opacity-100 transition duration-300"></div>
-                                    <div className="relative bg-zinc-800 hover:bg-zinc-800/80 rounded-lg p-1.5 transition-colors">
+                                    <div className="relative bg-zinc-800 hover:bg-zinc-800/80 rounded-lg p-1.5 transition-colors flex justify-center">
                                         <GoogleLogin
                                             onSuccess={handleGoogleSuccess}
                                             onError={handleGoogleError}
-                                            width="100%"
+                                            width="340"
                                             theme="filled_black"
                                             shape="rectangular"
                                             text="continue_with"
