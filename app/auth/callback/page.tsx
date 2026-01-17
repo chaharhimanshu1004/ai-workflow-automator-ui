@@ -17,10 +17,6 @@ export default function OAuthCallback() {
     }, []);
 
     useEffect(() => {
-        console.log('OAuth callback page loaded');
-        console.log('Current URL:', window.location.href);
-        console.log('Token available:', !!token);
-
         const handleCallback = async () => {
             const urlParams = new URLSearchParams(window.location.search);
             const code = urlParams.get('code');
@@ -40,14 +36,11 @@ export default function OAuthCallback() {
 
             if (code && state === 'gmail_oauth') {
                 if (!token) {
-                    console.log('Token not available yet, waiting...');
                     setDebugInfo('Waiting for authentication token...');
                     return; // Will retry when token becomes available
                 }
 
                 try {
-                    console.log('Making callback request to backend...');
-                    console.log('Backend URL:', process.env.NEXT_PUBLIC_BE_BASE_URL);
                     setDebugInfo('Sending authorization code to backend...');
 
                     const authHeaders = {
@@ -55,20 +48,15 @@ export default function OAuthCallback() {
                         'Content-Type': 'application/json'
                     };
 
-                    console.log('Auth headers:', authHeaders);
-
                     const response = await axios.post(
                         `${process.env.NEXT_PUBLIC_BE_BASE_URL}/oauth/gmail/callback`,
                         { code },
                         { headers: authHeaders }
                     );
 
-                    console.log('Callback successful:', response.data);
                     toast.success('Gmail credentials saved successfully!');
                     router.push('/credentials');
                 } catch (error: any) {
-                    console.error('OAuth callback error:', error);
-                    console.error('Error response:', error.response?.data);
                     console.error('Error status:', error.response?.status);
 
                     if (error.response?.status === 401) {
@@ -88,27 +76,48 @@ export default function OAuthCallback() {
             setIsProcessing(false);
         };
 
-        // Add a small delay to ensure the page has fully loaded
         const timer = setTimeout(handleCallback, 100);
         return () => clearTimeout(timer);
 
     }, [token, router]);
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-500 via-red-950/10 to-gray-400">
-            <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-                <p className="mt-4 text-gray-600">
-                    {isProcessing ? 'Processing authorization...' : 'Redirecting...'}
-                </p>
-                <p className="mt-2 text-xs text-gray-500">
-                    {debugInfo}
-                </p>
-                {currentUrl && (
-                    <p className="mt-2 text-xs text-gray-400">
-                        URL: {currentUrl}
-                    </p>
-                )}
+        <div className="min-h-screen w-full bg-zinc-950 flex items-center justify-center p-4">
+            <div className="max-w-md w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl shadow-2xl backdrop-blur-sm p-8 text-center relative overflow-hidden">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-32 bg-emerald-500/10 blur-[50px] rounded-full pointer-events-none" />
+
+                <div className="relative z-10 space-y-6">
+                    <div className="relative mx-auto h-16 w-16">
+                        <div className="absolute inset-0 rounded-full border-4 border-zinc-800"></div>
+                        <div className="absolute inset-0 rounded-full border-4 border-t-emerald-500 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <h2 className="text-xl font-bold text-white tracking-tight">
+                            {isProcessing ? 'Processing Authorization' : 'Redirecting'}
+                        </h2>
+                        <p className="text-zinc-400 text-sm">
+                            {isProcessing ? 'Please wait while we verify your credentials...' : 'You are being redirected to the application.'}
+                        </p>
+                    </div>
+
+                    <div className="bg-zinc-950/80 rounded-lg p-3 border border-zinc-800/50 text-left">
+                        <div className="flex items-center space-x-2 mb-1">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                            <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold">Status Log</span>
+                        </div>
+                        <p className="text-xs text-zinc-400 font-mono break-all leading-relaxed">
+                            {debugInfo}
+                        </p>
+                        {currentUrl && (
+                            <div className="mt-2 pt-2 border-t border-zinc-800/50">
+                                <p className="text-[10px] text-zinc-600 truncate font-mono">
+                                    URL: {currentUrl}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );
